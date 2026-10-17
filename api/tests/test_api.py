@@ -94,3 +94,14 @@ def test_reset():
     client.post("/api/notes", json={"resident_id": "R214", "text": "Res drank 300 mL."})
     client.post("/api/reset")
     assert client.get("/api/meta").json()["now"] == "2026-10-20T09:00:00"
+
+
+def test_snapshot_keys_cover_every_checkpoint(tmp_path):
+    from thread_api.snapshot import export, key
+
+    export(tmp_path)
+    names = {p.stem for p in tmp_path.iterdir()}
+    assert {"meta", "queue", "handover", "lab__samples", "residents"} <= names
+    assert key("queue", __import__("datetime").datetime(2026, 10, 19, 15)) == "queue@2026-10-19T1500"
+    assert "threads__R214-hydration-F-1001@2026-10-19T2300" in names
+    assert "threads__R214-hydration-F-1001" in names

@@ -47,7 +47,7 @@ eval: ## Run the labelled evaluation (writes data/evaluation.json)
 	$(BIN)/thread evaluate --out data/evaluation.json
 
 snapshot: ## Export the engine's output for the static GitHub Pages build
-	$(BIN)/thread snapshot --out web/public/snapshot
+	$(BIN)/python -m thread_api.snapshot --out web/public/snapshot
 
 pages: snapshot ## Build the static preview into web/out
 	cd web && NEXT_PUBLIC_DATA_MODE=static PAGES_BASE_PATH=/thread-pcc npm run build
