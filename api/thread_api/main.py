@@ -157,6 +157,11 @@ def lab(body: LabText) -> dict:
     return views.lab_extract(body.text, body.resident_id, store.now())
 
 
+@app.get("/api/lab/samples")
+def lab_samples() -> list[dict]:
+    return views.lab_samples(store.now())
+
+
 @app.get("/api/audit")
 def audit(limit: int = Query(200, ge=1, le=1000)) -> list[dict]:
     return store.audit(limit)

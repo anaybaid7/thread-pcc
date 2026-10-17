@@ -196,3 +196,15 @@ def test_every_facility_note_extracts_without_error():
         if rec.text:
             for e in extract_note(rec, facility.CARE_PLAN):
                 assert rec.text[e.span.start : e.span.end] == e.span.text
+
+
+def test_no_improvement_is_not_improvement():
+    (obs,) = observations(read("No improvement in intake noted this evening."))
+    assert obs.polarity == Polarity.WORSE
+
+
+def test_offered_amount_then_sips_is_low_intake_not_200_ml():
+    events = read("Offered 200 mL of water; res took a few sips then pushed the cup away.")
+    obs = observations(events)
+    assert [o.value for o in obs] == [None] and obs[0].polarity == Polarity.WORSE
+    assert any(e.kind == EventKind.REFUSAL for e in events)

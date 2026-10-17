@@ -112,6 +112,7 @@ _INTERVENTION = [
     r"given",
     r"prompted",
     r"cued",
+    r"cueing",
     r"reminded",
     r"brought",
     r"refilled",
@@ -191,6 +192,7 @@ _WORSE = [
 ]
 _BETTER = [
     r"improved",
+    r"improvement",
     r"much better",
     r"better",
     r"well",

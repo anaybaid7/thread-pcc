@@ -249,3 +249,30 @@ def lab_extract(text: str, resident_id: str, at: datetime) -> dict:
     events = extract_note(rec, facility.CARE_PLAN)
     return dict(text=text, resident=resident_card(resident_id), events=[dump(e) for e in events],
                 keyword=keyword_reading(text, resident_id))
+
+
+LAB_SAMPLES = [
+    ("offered", "Offered is not drank", "R214",
+     "Offered 200 mL of water; res took a few sips then pushed the cup away.",
+     "A keyword reader counts 200 mL as intake. THREAD reads an offer, a low observation and a refusal."),
+    ("plan", "A plan is not an action", "R216",
+     "Will reassess fluid intake after supper. Encourage fluids.",
+     "Both sentences are instructions. Neither is evidence that anything happened."),
+    ("no-improvement", "Negation flips the meaning", "R226",
+     "Day shift reports res had low fluids this AM. No improvement in intake noted this evening.",
+     "'Improvement' with 'no' in front is low intake, and the relayed morning report is not counted twice."),
+    ("roommate", "About someone else", "R316",
+     "Roommate refused her afternoon drink, reported to RPN.",
+     "THREAD keeps this out of Mabel's record and leaves it for a person."),
+    ("vague", "Vague stays vague", "R222",
+     "Didn't do well with drinks today, seems more tired?",
+     "Low intake with no amount, hedged: THREAD asks for a measurement instead of inventing one."),
+    ("closes", "The note that closes Rosa's thread", "R214",
+     "Res drank approx 300 mL of iced tea with cueing at lunch, blue cup.",
+     "An amount actually taken that meets Rosa's 250 mL target. Add it to her record and watch the thread close."),
+]
+
+
+def lab_samples(at: datetime) -> list[dict]:
+    return [dict(id=i, title=t, resident_id=rid, text=text, why=why, result=lab_extract(text, rid, at))
+            for i, t, rid, text, why in LAB_SAMPLES]
