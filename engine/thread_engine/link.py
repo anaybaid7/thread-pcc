@@ -81,7 +81,12 @@ def _last(events: list[ClinicalEvent], pred) -> ClinicalEvent | None:
     return next((e for e in reversed(events) if pred(e)), None)
 
 
-def _add(draft: Draft, e: ClinicalEvent, inferred: bool) -> None:
+def _clause_key(e: ClinicalEvent) -> tuple[str, int]:
+    """Identifies the sentence an event came from."""
+    return (e.source_id, e.span.start if e.span else -1)
+
+
+def _add(draft: Draft, e: ClinicalEvent, inferred: bool, refusals: frozenset[tuple[str, int]] = frozenset()) -> None:
     prior = draft.events_by_time
     links = draft.links
 
@@ -104,6 +109,8 @@ def _add(draft: Draft, e: ClinicalEvent, inferred: bool) -> None:
         link(signal, Relationship.RELAYS, f"Relays the earlier observation{shift_note}; not a new signal.")
     elif e.modality == Modality.PLANNED and signal:
         link(signal, Relationship.PLANS_FOR, f"Plan written {gap} after the signal{shift_note}.")
+    elif e.is_response and _clause_key(e) in refusals:
+        pass  # "Declined water when offered": the offer is part of the refusal, not a response to a signal.
     elif e.is_response and signal:
         link(signal, Relationship.RESPONDS_TO, f"Documented {gap} after the signal{shift_note}.")
     elif e.is_signal and signal:
@@ -155,6 +162,7 @@ def link_events(events: list[ClinicalEvent], as_of: datetime) -> tuple[list[Draf
 
     drafts: list[Draft] = []
     unlinked: list[Unlinked] = []
+    refusals = frozenset(_clause_key(e) for e in visible if e.kind == EventKind.REFUSAL and e.modality == Modality.DONE)
     for rid in sorted(by_resident):
         open_: dict[str, Draft] = {}
         pending: dict[str, list[ClinicalEvent]] = defaultdict(list)
@@ -183,11 +191,11 @@ def link_events(events: list[ClinicalEvent], as_of: datetime) -> tuple[list[Draf
                 draft = Draft(resident_id=rid, domain=domain, opened_by=e.event_id)
                 drafts.append(draft)
                 open_[domain] = draft
-                _add(draft, e, inferred)
+                _add(draft, e, inferred, refusals)
                 # Earlier sentences of the same note ("Will offer again" before the refusal is read) join as context.
                 for x in pending.pop(e.source_id, []):
                     if x.domain in (None, domain):
-                        _add(draft, x, x.domain is None)
+                        _add(draft, x, x.domain is None, refusals)
                 continue
-            _add(draft, e, inferred)
+            _add(draft, e, inferred, refusals)
     return drafts, unlinked

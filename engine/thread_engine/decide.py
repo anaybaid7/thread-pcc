@@ -9,7 +9,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 
 from .clock import shift_label
-from .link import RECURRENCE_GAP, Draft, _gap_text
+from .link import RECURRENCE_GAP, Draft, _clause_key, _gap_text
 from .model import (
     CarePlanRule,
     ClinicalEvent,
@@ -64,6 +64,8 @@ def decide(draft: Draft, rule: CarePlanRule | None, as_of: datetime,
     last_response: ClinicalEvent | None = None
     verified_by: ClinicalEvent | None = None
     plans: list[ClinicalEvent] = []
+    # "Declined water when offered": the offer is what was declined, not a response to the refusal.
+    declined = {_clause_key(e) for e in events if e.kind == EventKind.REFUSAL and e.is_signal}
 
     def reason(code: ReasonCode) -> None:
         if code not in reasons:
@@ -96,6 +98,9 @@ def decide(draft: Draft, rule: CarePlanRule | None, as_of: datetime,
             continue
         if e.modality != Modality.DONE:
             step(e, "context", StepLabel.CONTEXT, f"Recorded as {e.modality.value}; not counted.")
+            continue
+        if e.is_response and _clause_key(e) in declined:
+            step(e, "context", StepLabel.CONTEXT, "The offer that was declined; not a response to the refusal.")
             continue
         if e.is_response:
             if state != ThreadState.OUTCOME_VERIFIED:

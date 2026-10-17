@@ -77,3 +77,10 @@ def test_queue_order_is_by_reason():
     ranks = [t.review_rank for t in threads]
     assert ranks == sorted(ranks)
     assert threads[0].resident_id == "R214"
+
+
+def test_an_offer_that_was_declined_is_not_a_response():
+    rosa = NOW["R214/hydration"]
+    step = next(s for s in rosa.steps if s.event_id == "N-2004.2")
+    assert step.role == "context" and "declined" in step.note
+    assert not any(link.source_event_id == "N-2004.2" for link in rosa.links)

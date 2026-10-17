@@ -65,7 +65,8 @@ def explain(thread: ConcernThread, resident: Resident | None, rule: CarePlanRule
     measured = [e for e in signals if e.value is not None and e.polarity == Polarity.BELOW_TARGET]
     refusals = [e for e in signals if e.kind == EventKind.REFUSAL]
     vague = [e for e in signals if e not in measured and e not in refusals]
-    responses = [e for e in counted if e.is_response]
+    steps = {s.event_id: s.role for s in thread.steps}
+    responses = [e for e in counted if e.is_response and steps.get(e.event_id) == "response"]
     plans = [e for e in counted if e.modality == Modality.PLANNED]
     outcome = next((by_id[s.event_id] for s in thread.steps if s.role == "outcome"), None)
     hydration = thread.domain == "hydration"
