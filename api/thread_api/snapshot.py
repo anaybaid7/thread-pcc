@@ -14,6 +14,8 @@ import re
 from datetime import datetime
 from pathlib import Path
 
+from thread_engine import facility
+
 from . import views
 from .store import Store
 
@@ -48,6 +50,9 @@ def export(out: Path) -> int:
         for t in threads:
             detail = views.thread_detail(w, t.thread_id)
             write(key(f"threads/{t.thread_id}", point), detail)
+    write("timeline", views.timeline(base))
+    for r in facility.RESIDENTS:
+        write(key(f"story/{r.resident_id}"), views.story(base, r.resident_id))
     write("lab__samples", views.lab_samples(now))
     write("audit", [])
     if EVALUATION.exists():

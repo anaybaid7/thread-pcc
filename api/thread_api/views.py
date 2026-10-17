@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from collections import Counter
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 from thread_engine import facility
@@ -297,3 +297,84 @@ LAB_SAMPLES = [
 def lab_samples(at: datetime) -> list[dict]:
     return [dict(id=i, title=t, resident_id=rid, text=text, why=why, result=lab_extract(text, rid, at))
             for i, t, rid, text, why in LAB_SAMPLES]
+
+
+# ------------------------------------------------------------------------------------------- ward board
+
+WARD_START = datetime(2026, 10, 19, 7, 0)
+
+
+def _steps(world: World) -> list[datetime]:
+    """Every hour from Monday 07:00 to now, ending exactly at now."""
+    out, t = [], WARD_START
+    while t < world.now:
+        out.append(t)
+        t += timedelta(hours=1)
+    return out + [world.now]
+
+
+def _primary(threads: list[ConcernThread], rid: str) -> ConcernThread | None:
+    mine = [t for t in threads if t.resident_id == rid]
+    return min(mine, key=lambda t: (t.review_rank, -t.last_seen.timestamp())) if mine else None
+
+
+def timeline(world: World) -> dict:
+    """Each resident's most pressing thread state at every hour: the ward board."""
+    steps = _steps(world)
+    per_step = [world.threads(t)[0] for t in steps]
+    rows = []
+    for r in facility.RESIDENTS:
+        cells = []
+        for threads in per_step:
+            p = _primary(threads, r.resident_id)
+            cells.append(p.state.value if p else None)
+        now = _primary(per_step[-1], r.resident_id)
+        rows.append(dict(
+            resident=resident_card(r.resident_id), cells=cells,
+            thread_id=now.thread_id if now else None, state=now.state.value if now else None,
+            domain_label=DOMAIN_LABEL[now.domain] if now else None,
+            reason=now.review_reason if now else "No concern recorded.",
+            rank=now.review_rank if now else 9,
+        ))
+    rows.sort(key=lambda x: (x["rank"], x["resident"]["room"]))
+    return dict(steps=[s.isoformat() for s in steps], now=world.now.isoformat(), rows=rows,
+                handovers=[h.isoformat() for h in HANDOVERS if h <= world.now])
+
+
+def story(world: World, rid: str) -> dict:
+    """One resident at a glance: measurements against target, note markers, gaps, and what to do next."""
+    threads, _ = world.threads()
+    t = _primary(threads, rid)
+    domain = t.domain if t else "hydration"
+    rule = next((x for x in facility.rules_for(rid) if x.domain == domain), None)
+    unit = "mL" if domain == "hydration" else "staff assist"
+    measures = [dict(id=r.source_id, time=r.event_time.isoformat(), recorded_at=r.recorded_at.isoformat(),
+                     value=r.value, kind=r.source_type, author=r.author,
+                     meets=(rule.meets(r.value) if rule and rule.baseline_documented else None))
+                for r in world.records if r.resident_id == rid and r.unit == unit and r.value is not None
+                and r.recorded_at <= world.as_of]
+    markers, gaps, sentences, next_step = [], [], [], None
+    if t:
+        labels = labels_for(t)
+        roles = {s.event_id: (s.role, s.label.value, s.note) for s in t.steps}
+        texts = {r.source_id: r.text for r in world.records}
+        for e in t.events:
+            role, label, note = roles.get(e.event_id, ("context", "Context", ""))
+            if e.source_type == "progress_note" or e.kind.value == "refusal":
+                markers.append(dict(id=e.event_id, label=labels[e.event_id], time=e.event_time.isoformat(),
+                                    recorded_at=e.recorded_at.isoformat(), role=role, step=label, note=note,
+                                    summary=e.summary, quote=e.span.text if e.span else None,
+                                    note_text=texts.get(e.source_id), author=e.author,
+                                    late="late_entry" in e.flags))
+        gaps = [dict(start=g.start.isoformat(), end=g.end.isoformat(), text=g.description) for g in t.gaps]
+        if t.explanation:
+            sentences = [dict(text=s.text, cites=[labels[c] for c in s.cites]) for s in t.explanation.sentences]
+            next_step = t.explanation.next_step.text
+    return dict(
+        resident=dump(facility.resident(rid)),
+        rule=dump(rule) if rule else None,
+        domain=domain, domain_label=DOMAIN_LABEL[domain],
+        thread=summary(t) if t else None,
+        measures=measures, markers=markers, gaps=gaps, sentences=sentences, next_step=next_step,
+        other_threads=[summary(x) for x in threads if x.resident_id == rid and t and x.thread_id != t.thread_id],
+    )

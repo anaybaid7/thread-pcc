@@ -66,6 +66,17 @@ def residents(as_of: str | None = None) -> list[dict]:
     return views.residents(world(as_of))
 
 
+@app.get("/api/timeline")
+def timeline() -> dict:
+    return views.timeline(world())
+
+
+@app.get("/api/story/{rid}")
+def story(rid: str) -> dict:
+    _resident_or_404(rid)
+    return views.story(world(), rid)
+
+
 @app.get("/api/handover")
 def handover(as_of: str | None = None) -> dict:
     return views.handover(world(as_of))

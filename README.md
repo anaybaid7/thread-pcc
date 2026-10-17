@@ -9,7 +9,10 @@ Built for the PointClickCare **Catch It Early** challenge at Hack the Valley. Al
 **Live preview:** https://anaybaid7.github.io/thread-pcc/ (a static build of the engine's output; run it locally to act
 on threads and paste your own notes)
 
-![The Needs Review queue](docs/screenshots/queue.png)
+![The ward board: every resident, every hour, and Rosa's day](docs/screenshots/ward.png)
+
+Press **▶ Play** on the ward board to watch the last 26 hours: concerns appear, change colour and close across the
+shifts. Click any resident to see their day as a picture and record a bedside check.
 
 ## The idea in one resident
 
@@ -40,7 +43,8 @@ Every entry is reasonable. No single screen shows the story. THREAD does:
 
 | Screen | What it answers |
 |---|---|
-| **Needs review** | Who needs a second look, and why: ranked by reason (recurring, unanswered, unverified, unclear), never by an opaque score. Unlinked evidence stays in front of a person. |
+| **Ward board** | Every resident, every hour, coloured by thread state, with a time slider and play button. Click a resident for their day at a glance: rounds against target, note icons, the stretch where nothing was measured, and a "check now" box. |
+| **Review list** | Who needs a second look, and why: ranked by reason (recurring, unanswered, unverified, unclear), never by an opaque score. Unlinked evidence stays in front of a person. |
 | **Concern thread** | The thread itself across shift bands: each source note with the exact span read, event vs entry time, the cues that decided each reading, links with reasons, evidence gaps, replay and actions. |
 | **Shift handover** | Three to five items the incoming shift should verify, drafted from cited evidence, editable, with what is new since the last handover. |
 | **Note lab** | Paste a note. See THREAD's reading beside what a keyword matcher would conclude, then add it to the record and watch the thread change. |

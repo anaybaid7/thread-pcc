@@ -9,12 +9,13 @@ import { useAsOf, useHref, useMeta } from '@/lib/hooks'
 import { Logo } from './Logo'
 
 const NAV = [
-  { href: '/', label: 'Needs review' },
+  { href: '/', label: 'Ward board' },
+  { href: '/queue', label: 'Review list' },
   { href: '/handover', label: 'Shift handover' },
   { href: '/lab', label: 'Note lab' },
   { href: '/evaluation', label: 'Evaluation' },
-  { href: '/audit', label: 'Audit log' },
   { href: '/method', label: 'How it works' },
+  ...(STATIC ? [] : [{ href: '/audit', label: 'Audit log' }]),
 ]
 
 export function Shell({ children }: { children: ReactNode }) {
@@ -46,7 +47,7 @@ export function Shell({ children }: { children: ReactNode }) {
               <span className="font-bold text-ink">{m?.facility ?? 'Valleyview Commons'}</span>
               <span className="hidden sm:inline"> · Maple & Birch wings</span>
             </span>
-            <label className="flex items-center gap-2">
+            <label className={`flex items-center gap-2 ${pathname === '/' ? 'hidden' : ''}`}>
               <span className="text-ink-3">Viewing</span>
               <select
                 className="input w-auto max-w-[min(15rem,calc(100vw-7rem))] py-0.5 pr-7 text-[14px]"
@@ -62,7 +63,7 @@ export function Shell({ children }: { children: ReactNode }) {
                 {!m && <option value="">Tue 09:00 (now)</option>}
               </select>
             </label>
-            {!isNow && m && (
+            {!isNow && m && pathname !== '/' && (
               <button className="btn btn-sm" onClick={() => setAsOf(null)}>
                 Back to now ({when(m.now)})
               </button>
@@ -76,7 +77,8 @@ export function Shell({ children }: { children: ReactNode }) {
         <nav aria-label="Main" className="mx-auto max-w-[1240px] overflow-x-auto px-4 sm:px-6">
           <ul className="flex gap-1">
             {NAV.map((n) => {
-              const active = n.href === '/' ? pathname === '/' || pathname.startsWith('/thread') : pathname.startsWith(n.href)
+              const active =
+                n.href === '/' ? pathname === '/' : n.href === '/queue' ? pathname.startsWith('/queue') || pathname.startsWith('/thread') : pathname.startsWith(n.href)
               return (
                 <li key={n.href}>
                   <Link

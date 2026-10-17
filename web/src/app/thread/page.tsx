@@ -71,8 +71,8 @@ function ThreadView() {
 
   return (
     <div className={q.isFetching ? 'opacity-80 transition-opacity' : ''}>
-      <Link href={href('/')} className="no-print mb-4 inline-block text-[14px] text-ink-2 underline underline-offset-4">
-        ← Needs review
+      <Link href={href('/queue')} className="no-print mb-4 inline-block text-[14px] text-ink-2 underline underline-offset-4">
+        ← Review list
       </Link>
 
       <header className="mb-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">

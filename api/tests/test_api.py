@@ -105,3 +105,20 @@ def test_snapshot_keys_cover_every_checkpoint(tmp_path):
     assert key("queue", __import__("datetime").datetime(2026, 10, 19, 15)) == "queue@2026-10-19T1500"
     assert "threads__R214-hydration-F-1001@2026-10-19T2300" in names
     assert "threads__R214-hydration-F-1001" in names
+
+
+def test_timeline_tells_rosas_story_hour_by_hour():
+    t = client.get("/api/timeline").json()
+    assert len(t["steps"]) == 27 and t["steps"][-1] == "2026-10-20T09:00:00"
+    rosa = next(r for r in t["rows"] if r["resident"]["resident_id"] == "R214")
+    assert rosa["cells"][0] is None and rosa["cells"][-1] == "persistent_signal"
+    assert "unverified" in rosa["cells"] and "response_documented" in rosa["cells"]
+    assert t["rows"][0]["rank"] <= t["rows"][-1]["rank"]
+
+
+def test_story_has_measurements_markers_and_gaps():
+    s = client.get("/api/story/R214").json()
+    assert [m["value"] for m in s["measures"]] == [120, 100]
+    assert {m["role"] for m in s["markers"]} >= {"response", "plan", "recurrence"}
+    assert len(s["gaps"]) == 1 and s["next_step"]
+    assert client.get("/api/story/R318").json()["thread"] is None

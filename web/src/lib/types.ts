@@ -300,3 +300,49 @@ export interface Evaluation {
   families: [string, string][]
   configs: EvalConfig[]
 }
+
+export interface TimelineRow {
+  resident: ResidentCard
+  cells: (State | null)[]
+  thread_id: string | null
+  state: State | null
+  domain_label: string | null
+  reason: string
+  rank: number
+}
+
+export interface Timeline {
+  steps: string[]
+  now: string
+  rows: TimelineRow[]
+  handovers: string[]
+}
+
+export interface StoryMarker {
+  id: string
+  label: string
+  time: string
+  recorded_at: string
+  role: ThreadStep['role']
+  step: string
+  note: string
+  summary: string
+  quote: string | null
+  note_text: string | null
+  author: string
+  late: boolean
+}
+
+export interface Story {
+  resident: Resident
+  rule: CarePlanRule | null
+  domain: Domain
+  domain_label: string
+  thread: ThreadSummary | null
+  measures: { id: string; time: string; recorded_at: string; value: number; kind: string; author: string; meets: boolean | null }[]
+  markers: StoryMarker[]
+  gaps: { start: string; end: string; text: string }[]
+  sentences: { text: string; cites: string[] }[]
+  next_step: string | null
+  other_threads: ThreadSummary[]
+}

@@ -2,178 +2,143 @@
 
 import { useQuery } from '@tanstack/react-query'
 import Link from 'next/link'
-import { useMemo, useState } from 'react'
-import { CompactRow, QueueCard } from '@/components/QueueCard'
-import { Empty, ErrorBox, PageTitle, Panel, Skeleton, Stat, Sticky } from '@/components/ui'
-import { get, withAsOf } from '@/lib/api'
-import { displayName, when } from '@/lib/format'
-import { useAsOf, useHref, useMeta } from '@/lib/hooks'
-import type { Queue, State } from '@/lib/types'
+import { useEffect, useRef, useState } from 'react'
+import { Board, LEGEND, Swatch } from '@/components/ward/Board'
+import { StoryPanel } from '@/components/ward/StoryPanel'
+import { ErrorBox, Skeleton } from '@/components/ui'
+import { get } from '@/lib/api'
+import { STATE_META } from '@/lib/format'
+import type { State, Timeline } from '@/lib/types'
 
-const STATE_FILTERS: { value: 'all' | State; label: string }[] = [
-  { value: 'all', label: 'All states' },
-  { value: 'persistent_signal', label: 'Persistent' },
-  { value: 'new_signal', label: 'New signal' },
-  { value: 'unverified', label: 'Unverified' },
-  { value: 'ambiguous', label: 'Ambiguous' },
-]
+function dayTime(iso: string) {
+  const d = new Date(iso)
+  return `${d.toLocaleDateString('en-CA', { weekday: 'long' })} ${iso.slice(11, 16)}`
+}
 
-export default function NeedsReview() {
-  const [asOf] = useAsOf()
-  const href = useHref()
-  const meta = useMeta()
-  const q = useQuery({ queryKey: ['queue', asOf], queryFn: () => get<Queue>(withAsOf('/queue', asOf)) })
-  const [domain, setDomain] = useState('all')
-  const [state, setState] = useState<'all' | State>('all')
-  const [wing, setWing] = useState('all')
+export default function Ward() {
+  const q = useQuery({ queryKey: ['timeline'], queryFn: () => get<Timeline>('/timeline') })
+  const t = q.data
+  const last = (t?.steps.length ?? 1) - 1
+  const [cursor, setCursor] = useState<number | null>(null)
+  const [playing, setPlaying] = useState(false)
+  const [selected, setSelected] = useState<string | null>('R214')
+  const timer = useRef<ReturnType<typeof setInterval> | null>(null)
+  const at = cursor ?? last
 
-  const items = useMemo(
-    () =>
-      (q.data?.items ?? []).filter(
-        (t) =>
-          (domain === 'all' || t.domain === domain) &&
-          (state === 'all' || t.state === state) &&
-          (wing === 'all' || t.resident.wing === wing),
-      ),
-    [q.data, domain, state, wing],
-  )
-  const now = q.data?.as_of ?? meta.data?.now ?? ''
-  const threadHref = (id: string) => href(`/thread?id=${encodeURIComponent(id)}`)
+  useEffect(() => {
+    if (!playing) return
+    timer.current = setInterval(() => {
+      setCursor((c) => {
+        const next = (c ?? 0) + 1
+        if (next >= last) {
+          setPlaying(false)
+          return last
+        }
+        return next
+      })
+    }, 650)
+    return () => {
+      if (timer.current) clearInterval(timer.current)
+    }
+  }, [playing, last])
+
+  const play = () => {
+    if (playing) return setPlaying(false)
+    if (at >= last) setCursor(0)
+    setPlaying(true)
+  }
+
+  const counts = (state: State) => t?.rows.filter((r) => r.cells[at] === state).length ?? 0
+  const open = (['persistent_signal', 'new_signal', 'unverified', 'ambiguous'] as State[]).reduce((n, s) => n + counts(s), 0)
+  const row = t?.rows.find((r) => r.resident.resident_id === selected)
 
   return (
     <>
-      <PageTitle
-        kicker={meta.data ? `${meta.data.shift} shift · ${when(now)}` : 'Morning huddle'}
-        title={
-          <>
-            Who needs a <span className="scribble">second look</span>, and why
-          </>
-        }
-      >
-        <Link href={href('/handover')} className="btn btn-primary">
-          Build the shift handover <span aria-hidden="true">→</span>
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="label">Valleyview Commons · 14 residents · synthetic</p>
+          <h1 className="text-[30px] sm:text-[36px]">
+            The last 26 hours, <span className="scribble">one row per resident</span>
+          </h1>
+          <p className="mt-1 text-ink-2">Press play to watch concerns appear across the shifts. Click a resident to see their day.</p>
+        </div>
+        <Link href="/handover" className="btn">
+          Shift handover →
         </Link>
-      </PageTitle>
+      </div>
 
       {q.isError ? (
         <ErrorBox error={q.error} retry={() => q.refetch()} />
+      ) : !t ? (
+        <div className="panel p-6">
+          <Skeleton lines={10} />
+        </div>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_330px]">
-          <div className="min-w-0 space-y-5">
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {q.data ? (
-                <>
-                  <Stat value={q.data.counts.open} label={`open of ${q.data.counts.residents} residents`} />
-                  <Stat value={q.data.counts.persistent} label="persistent" color="var(--color-persistent)" />
-                  <Stat value={q.data.counts.unverified + q.data.counts.new_signals} label="unverified or unanswered" color="var(--color-unverified)" />
-                  <Stat value={q.data.counts.ambiguous} label="ambiguous" color="var(--color-ambiguous)" />
-                </>
-              ) : (
-                Array.from({ length: 4 }, (_, i) => <div key={i} className="skeleton h-[82px]" />)
-              )}
+        <div className="space-y-5">
+          <section className="panel p-4 sm:p-5" aria-label="Ward board">
+            <div className="mb-4 flex flex-wrap items-center gap-x-5 gap-y-3">
+              <button type="button" onClick={play} className="btn btn-primary min-w-[118px] text-[16px]" aria-pressed={playing}>
+                {playing ? '❚❚ Pause' : at >= last ? '▶ Replay' : '▶ Play'}
+              </button>
+              <div className="min-w-[220px] flex-1">
+                <label className="block">
+                  <span className="sr-only">Time</span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={last}
+                    value={at}
+                    onChange={(e) => {
+                      setPlaying(false)
+                      setCursor(Number(e.target.value))
+                    }}
+                    className="w-full accent-[var(--color-ink)]"
+                    aria-valuetext={dayTime(t.steps[at]!)}
+                  />
+                </label>
+              </div>
+              <div className="text-right">
+                <p className="text-[22px] leading-none font-bold tabular-nums">{dayTime(t.steps[at]!)}</p>
+                <p className="text-[13px] text-ink-3">{at === last ? 'now' : 'replaying, only what had been entered by then'}</p>
+              </div>
             </div>
 
-            <fieldset className="flex flex-wrap items-center gap-2">
-              <legend className="sr-only">Filter the queue</legend>
-              <select className="input w-auto" value={domain} onChange={(e) => setDomain(e.target.value)} aria-label="Concern">
-                <option value="all">All concerns</option>
-                <option value="hydration">Fluid intake</option>
-                <option value="mobility">Mobility</option>
-              </select>
-              <select className="input w-auto" value={state} onChange={(e) => setState(e.target.value as 'all' | State)} aria-label="State">
-                {STATE_FILTERS.map((f) => (
-                  <option key={f.value} value={f.value}>
-                    {f.label}
-                  </option>
-                ))}
-              </select>
-              <select className="input w-auto" value={wing} onChange={(e) => setWing(e.target.value)} aria-label="Wing">
-                <option value="all">Both wings</option>
-                <option value="Maple">Maple wing</option>
-                <option value="Birch">Birch wing</option>
-              </select>
-              {q.data && (
-                <span className="text-[14px] text-ink-3">
-                  Showing {items.length} of {q.data.items.length}
+            <div className="mb-4 flex flex-wrap gap-2" aria-live="polite">
+              <span className="chip" style={{ color: 'var(--color-ink)' }}>
+                {open} need a second look
+              </span>
+              {LEGEND.filter(Boolean).map((s) => (
+                <span key={s} className="inline-flex items-center gap-1.5 text-[13.5px]">
+                  <Swatch state={s} />
+                  {STATE_META[s as State].short} <b>{counts(s as State)}</b>
                 </span>
-              )}
-            </fieldset>
+              ))}
+              <span className="inline-flex items-center gap-1.5 text-[13.5px]">
+                <Swatch state={null} /> no concern
+              </span>
+            </div>
 
-            {q.isPending ? (
-              <div className="space-y-4">
-                {[0, 1, 2].map((i) => (
-                  <div key={i} className="panel p-5">
-                    <Skeleton lines={4} />
-                  </div>
-                ))}
-              </div>
-            ) : items.length === 0 ? (
-              <Empty title={q.data?.items.length ? 'Nothing matches these filters.' : 'No open concern threads.'}>
-                {q.data?.items.length ? 'Clear a filter to see the rest of the queue.' : 'Every thread is verified or still inside its follow-up window.'}
-              </Empty>
-            ) : (
-              <ol className="space-y-4" aria-label="Concern threads in review order">
-                {items.map((t) => (
-                  <li key={t.thread_id}>
-                    <QueueCard t={t} rank={q.data!.items.indexOf(t) + 1} now={now} href={threadHref(t.thread_id)} />
-                  </li>
-                ))}
-              </ol>
-            )}
-          </div>
+            <Board
+              t={t}
+              cursor={at}
+              onCursor={(i) => {
+                setPlaying(false)
+                setCursor(i)
+              }}
+              selected={selected}
+              onSelect={setSelected}
+            />
+          </section>
 
-          <aside className="space-y-5" aria-label="Context">
-            <Sticky tilt={0.8}>
-              <p className="font-bold">Ranked by reason, not by score.</p>
-              <p className="mt-1 text-[14px]">
-                Recurring signals first, then signals nobody has answered, then responses whose outcome isn’t recorded, then
-                unclear evidence. A documented action is never treated as a resolved concern.
-              </p>
-            </Sticky>
+          {selected && row && (
+            <StoryPanel key={selected} rid={selected} steps={t.steps} cells={row.cells} cursor={at} onClose={() => setSelected(null)} />
+          )}
 
-            <Panel title="Unlinked evidence" aside={<span className="text-[13px] text-ink-3">needs a person</span>}>
-              {q.data?.unlinked.length ? (
-                <ul className="space-y-3">
-                  {q.data.unlinked
-                    .filter((u, i, all) => all.findIndex((x) => x.event.source_id === u.event.source_id && x.event.span?.start === u.event.span?.start) === i)
-                    .map((u) => (
-                    <li key={u.event.event_id} className="text-[14px]">
-                      <p className="note-paper">“{u.event.span?.text ?? u.event.summary}”</p>
-                      <p className="mt-1 text-ink-2">
-                        In {displayName(u.resident)}’s note, {when(u.event.event_time)}. {u.reason}
-                      </p>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-ink-3">{q.isPending ? 'Loading…' : 'Nothing left unlinked.'}</p>
-              )}
-            </Panel>
-
-            <Panel title="Watching" aside={<span className="text-[13px] text-ink-3">inside follow-up window</span>}>
-              {q.data?.watching.length ? (
-                <ul className="divide-y-2 divide-dashed divide-line-soft">
-                  {q.data.watching.map((t) => (
-                    <CompactRow key={t.thread_id} t={t} href={threadHref(t.thread_id)} />
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-ink-3">{q.isPending ? 'Loading…' : 'None right now.'}</p>
-              )}
-            </Panel>
-
-            <Panel title="Closed" aside={<span className="text-[13px] text-ink-3">met the demonstration rule</span>}>
-              {q.data?.closed.length ? (
-                <ul className="divide-y-2 divide-dashed divide-line-soft">
-                  {q.data.closed.map((t) => (
-                    <CompactRow key={t.thread_id} t={t} href={threadHref(t.thread_id)} />
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-ink-3">{q.isPending ? 'Loading…' : 'None yet.'}</p>
-              )}
-            </Panel>
-          </aside>
+          <p className="text-[13.5px] text-ink-3">
+            Prefer a list? <Link href="/queue" className="underline underline-offset-4">Open the review queue</Link>. Colours are thread states, not risk
+            scores: red means a signal came back after a response, orange means nobody has answered a signal, yellow means a
+            response with no recorded outcome, purple means the evidence is unclear.
+          </p>
         </div>
       )}
     </>
