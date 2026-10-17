@@ -1,1 +1,268 @@
 @import 'tailwindcss';
+
+/*
+ * THREAD design system: a Balsamiq-style wireframe, built to production standards.
+ * Hand-drawn borders come from an SVG displacement filter applied to ::after layers only, so text is never distorted.
+ * Colour carries meaning (thread state), never decoration.
+ */
+
+@theme {
+  --font-sans: 'Balsamiq Sans', 'Comic Neue', 'Segoe Print', system-ui, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+  --color-paper: #fbfaf5;
+  --color-surface: #ffffff;
+  --color-fill: #efeee8;
+  --color-fill-2: #e4e3dc;
+  --color-ink: #1f2328;
+  --color-ink-2: #474d56;
+  --color-ink-3: #636973;
+  --color-line: #1f2328;
+  --color-line-soft: #b4b3ab;
+  --color-accent: #2557c4;
+  --color-accent-soft: #e3ecfc;
+  --color-sticky: #fff4a8;
+  --color-sticky-edge: #e6d35a;
+  --color-highlight: #ffe97a;
+
+  --color-persistent: #b8322a;
+  --color-persistent-soft: #fbe6e3;
+  --color-newsignal: #a85a0c;
+  --color-newsignal-soft: #fcecd9;
+  --color-unverified: #7a5d00;
+  --color-unverified-soft: #f7efcc;
+  --color-ambiguous: #6a40a8;
+  --color-ambiguous-soft: #eee6f8;
+  --color-watching: #2557c4;
+  --color-watching-soft: #e3ecfc;
+  --color-verified: #2a733a;
+  --color-verified-soft: #e2f1e5;
+}
+
+@layer base {
+  html {
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    background:
+      radial-gradient(circle at 1px 1px, rgb(31 35 40 / 0.06) 1px, transparent 0) 0 0 / 22px 22px,
+      var(--color-paper);
+    min-height: 100vh;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+  ::selection {
+    background: var(--color-highlight);
+  }
+  :focus-visible {
+    outline: 3px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+  h1,
+  h2,
+  h3 {
+    font-weight: 700;
+    line-height: 1.2;
+  }
+  button {
+    font-family: inherit;
+  }
+}
+
+@layer components {
+  /* A hand-drawn box: the border lives on ::after and is roughened by the #sketch filter. */
+  .sketch {
+    position: relative;
+    isolation: isolate;
+  }
+  .sketch::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border: 2px solid var(--sketch-color, var(--color-line));
+    border-radius: 3px;
+    filter: url(#sketch);
+    pointer-events: none;
+    z-index: 1;
+  }
+  .sketch-soft::after {
+    border-width: 1.5px;
+    --sketch-color: var(--color-line-soft);
+  }
+  .panel {
+    position: relative;
+    isolation: isolate;
+    background: var(--color-surface);
+  }
+  .panel::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border: 2px solid var(--sketch-color, var(--color-line));
+    border-radius: 3px;
+    filter: url(#sketch);
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .btn {
+    position: relative;
+    isolation: isolate;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    background: var(--color-surface);
+    padding: 0.35rem 0.9rem;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--color-ink);
+    cursor: pointer;
+    transition:
+      transform 80ms ease,
+      background-color 120ms ease;
+  }
+  .btn::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border: 2px solid var(--color-line);
+    border-radius: 4px;
+    filter: url(#sketch);
+    pointer-events: none;
+  }
+  .btn:hover:not(:disabled) {
+    background: var(--color-fill);
+  }
+  .btn:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+  .btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+  .btn-primary {
+    background: var(--color-ink);
+    color: var(--color-paper);
+  }
+  .btn-primary:hover:not(:disabled) {
+    background: #39404a;
+  }
+  .btn-sm {
+    padding: 0.15rem 0.6rem;
+    font-size: 13.5px;
+  }
+
+  .input {
+    width: 100%;
+    background: var(--color-surface);
+    padding: 0.45rem 0.7rem;
+    font-size: 15px;
+    color: var(--color-ink);
+    border: 2px solid var(--color-line);
+    border-radius: 4px;
+    font-family: inherit;
+  }
+  .input:focus-visible {
+    outline: 3px solid var(--color-accent);
+    outline-offset: 1px;
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    white-space: nowrap;
+    padding: 0 0.55rem;
+    font-size: 13px;
+    line-height: 1.45rem;
+    font-weight: 700;
+    border: 1.5px solid currentColor;
+    border-radius: 999px;
+  }
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    white-space: nowrap;
+    padding: 0 0.4rem;
+    font-size: 12.5px;
+    line-height: 1.3rem;
+    border: 1.5px dashed var(--color-line-soft);
+    border-radius: 4px;
+    color: var(--color-ink-2);
+  }
+
+  .sticky-note {
+    position: relative;
+    padding: 0.8rem 1rem;
+    background: var(--color-sticky);
+    box-shadow: 2px 3px 0 rgb(31 35 40 / 0.13);
+  }
+
+  .label {
+    font-size: 12.5px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--color-ink-3);
+    text-transform: uppercase;
+  }
+
+  /* Lined paper for quoted notes, so a source note reads as something a person wrote. */
+  .note-paper {
+    padding: 0 0.75rem;
+    font-size: 14.5px;
+    line-height: 24px;
+    background:
+      repeating-linear-gradient(to bottom, transparent 0 23px, rgb(37 87 196 / 0.13) 23px 24px),
+      #fffef8;
+    border-left: 3px solid rgb(184 50 42 / 0.35);
+  }
+  .mark-span {
+    background: linear-gradient(transparent 40%, var(--color-highlight) 40%, var(--color-highlight) 92%, transparent 92%);
+  }
+
+  .hatch {
+    background-image: repeating-linear-gradient(-45deg, rgb(31 35 40 / 0.08) 0 2px, transparent 2px 7px);
+  }
+  .skeleton {
+    background-image: repeating-linear-gradient(-45deg, rgb(31 35 40 / 0.08) 0 2px, transparent 2px 7px);
+    border-radius: 4px;
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+
+  .scribble {
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 8' preserveAspectRatio='none'%3E%3Cpath d='M1 5 C 20 1, 40 8, 60 4 S 90 2, 99 5' fill='none' stroke='%23b8322a' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E")
+      bottom / 100% 7px no-repeat;
+    padding-bottom: 4px;
+  }
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media print {
+  body {
+    background: white;
+  }
+  .no-print {
+    display: none !important;
+  }
+}
