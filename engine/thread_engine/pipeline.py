@@ -5,9 +5,11 @@ from __future__ import annotations
 from collections.abc import Callable, Iterable
 from datetime import datetime
 
+from .decide import decide
 from .extract.context import note_events
-from .model import CarePlanRule, ClinicalEvent, SourceRecord
-from .normalize import finalize, structured_events
+from .link import Unlinked, link_events
+from .model import CarePlanRule, ClinicalEvent, ConcernThread, ReviewAction, SourceRecord
+from .normalize import finalize, rule_for, structured_events
 
 NoteExtractor = Callable[[list[SourceRecord], list[CarePlanRule]], list[ClinicalEvent]]
 
@@ -24,3 +26,16 @@ def events_from(records: Iterable[SourceRecord], rules: Iterable[CarePlanRule],
 
 def visible_records(records: Iterable[SourceRecord], as_of: datetime) -> list[SourceRecord]:
     return [r for r in records if r.recorded_at <= as_of]
+
+
+def threads_at(records: Iterable[SourceRecord], rules: Iterable[CarePlanRule], as_of: datetime,
+               reviews: list[ReviewAction] | None = None, extract: NoteExtractor | None = note_events,
+               events: list[ClinicalEvent] | None = None) -> tuple[list[ConcernThread], list[Unlinked]]:
+    """Every concern thread as it stood at `as_of`, using only what had been entered by then."""
+    rules = list(rules)
+    if events is None:
+        events = events_from(records, rules, extract)
+    drafts, unlinked = link_events(events, as_of)
+    threads = [decide(d, rule_for(rules, d.resident_id, d.domain), as_of, reviews) for d in drafts]
+    threads.sort(key=lambda t: (t.review_rank, t.first_seen, t.thread_id))
+    return threads, unlinked
