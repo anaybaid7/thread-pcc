@@ -188,6 +188,8 @@ class Relationship(StrEnum):
     CONTRADICTS = "contradicts"
     PLANS_FOR = "plans_for"
     DUPLICATES = "duplicates"
+    RELAYS = "relays"
+    """A later note repeating an earlier observation ('day shift reports...')."""
 
 
 class EvidenceLink(Model):
@@ -305,7 +307,7 @@ class ConcernThread(Model):
     gaps: list[Gap]
     shifts_spanned: list[str]
     """Shift instances the thread crosses, e.g. ['Mon day', 'Mon evening', 'Tue day']."""
-    explanation: Explanation
+    explanation: Explanation | None = None
     review_rank: int
     """Lower is reviewed first. Derived from the reason, never from an opaque score."""
     review_reason: str
