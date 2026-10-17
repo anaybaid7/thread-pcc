@@ -155,8 +155,10 @@ class ClinicalEvent(Model):
 
     @property
     def is_signal(self) -> bool:
-        """A concerning observation that can open or extend a thread."""
-        if self.modality != Modality.DONE or self.duplicate_of:
+        """A concerning observation that can open or extend a thread.
+
+        Relayed history ('day shift reports...') and statements about someone else are context, not new signals."""
+        if self.modality != Modality.DONE or self.duplicate_of or {"historical", "other_subject"} & set(self.flags):
             return False
         if self.kind == EventKind.REFUSAL:
             return True
@@ -167,7 +169,9 @@ class ClinicalEvent(Model):
 
     @property
     def is_response(self) -> bool:
-        return self.modality == Modality.DONE and self.kind in (EventKind.INTERVENTION, EventKind.ESCALATION)
+        if self.modality != Modality.DONE or "other_subject" in self.flags:
+            return False
+        return self.kind in (EventKind.INTERVENTION, EventKind.ESCALATION, EventKind.ASSESSMENT)
 
     @property
     def is_measured(self) -> bool:
