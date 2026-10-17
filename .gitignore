@@ -1,0 +1,24 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+.DS_Store
+
+# Runtime state
+data/*.sqlite*
+data/llm_cache/*.tmp
+
+# Web
+web/node_modules/
+web/.next/
+web/out/
+web/next-env.d.ts
+web/public/snapshot/
+web/test-results/
+*.tsbuildinfo
+.env
+.env.local
