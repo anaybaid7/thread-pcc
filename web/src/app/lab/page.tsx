@@ -6,7 +6,7 @@ import { useState } from 'react'
 import { ErrorBox, PageTitle, Panel, Skeleton, StateChip, Sticky } from '@/components/ui'
 import { get, post, STATIC } from '@/lib/api'
 import { displayName } from '@/lib/format'
-import { useHref } from '@/lib/hooks'
+import { useHref, useMeta } from '@/lib/hooks'
 import type { ClinicalEvent, KeywordReading, LabResult, ResidentRow, ThreadSummary } from '@/lib/types'
 
 interface Sample {
@@ -89,9 +89,11 @@ export default function LabPage() {
   const [rid, setRid] = useState('R214')
   const [result, setResult] = useState<LabResult | null>(null)
   const [added, setAdded] = useState<ThreadSummary[] | null>(null)
+  const meta = useMeta()
+  const [useLlm, setUseLlm] = useState(false)
 
   const read = useMutation({
-    mutationFn: () => post<LabResult>('/lab/extract', { text, resident_id: rid }),
+    mutationFn: () => post<LabResult>('/lab/extract', { text, resident_id: rid, use_llm: useLlm }),
     onSuccess: (r) => {
       setResult(r)
       setAdded(null)
@@ -172,6 +174,12 @@ export default function LabPage() {
                   readOnly={STATIC}
                 />
               </label>
+              {meta.data?.llm.available && (
+                <label className="flex items-center gap-2 text-[14px]">
+                  <input type="checkbox" checked={useLlm} onChange={(e) => setUseLlm(e.target.checked)} />
+                  Also read with the language model ({meta.data.llm.model}); quotes are checked against the note
+                </label>
+              )}
               <div className="flex flex-wrap gap-2">
                 <button className="btn btn-primary" disabled={STATIC || !text.trim() || read.isPending}>
                   Read this note
@@ -241,6 +249,37 @@ export default function LabPage() {
                   </ul>
                 )}
               </Panel>
+              {result.llm && (
+                <Panel title={`Language model’s reading${result.llm.model ? ` · ${result.llm.model}` : ''}`}>
+                  {result.llm.error ? (
+                    <p className="text-ink-2">{result.llm.error}. The rules reading above still stands.</p>
+                  ) : (
+                    <>
+                      <ul className="space-y-1.5">
+                        {result.llm.events.map((e) => (
+                          <li key={e.event_id}>
+                            <b>{readable(e)}</b> <span className="text-ink-2">“{e.span?.text}”</span>
+                          </li>
+                        ))}
+                        {result.llm.events.length === 0 && <li className="text-ink-2">No events.</li>}
+                      </ul>
+                      {result.llm.rejected.length > 0 && (
+                        <div className="mt-3">
+                          <p className="label">Rejected proposals</p>
+                          <ul className="text-[14px] text-ink-2">
+                            {result.llm.rejected.map((r) => (
+                              <li key={r.quote + r.reason}>
+                                “{r.quote}” · {r.reason}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      <p className="mt-2 text-[13px] text-ink-3">The model proposes; quotes are verified and amounts are compared with the care plan by the same rules.</p>
+                    </>
+                  )}
+                </Panel>
+              )}
               <Panel title="What a keyword matcher would conclude" tone="var(--color-fill)">
                 {result.keyword.length === 0 ? (
                   <p className="text-ink-2">Nothing.</p>

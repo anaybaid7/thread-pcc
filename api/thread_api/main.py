@@ -149,12 +149,13 @@ def add_note(body: Note) -> dict:
 class LabText(BaseModel):
     text: str = Field(min_length=1, max_length=2000)
     resident_id: str = "R214"
+    use_llm: bool = False
 
 
 @app.post("/api/lab/extract")
 def lab(body: LabText) -> dict:
     _resident_or_404(body.resident_id)
-    return views.lab_extract(body.text, body.resident_id, store.now())
+    return views.lab_extract(body.text, body.resident_id, store.now(), body.use_llm)
 
 
 @app.get("/api/lab/samples")

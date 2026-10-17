@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
 from thread_engine import facility
 from thread_engine.clock import DEMO_NOW, HANDOVERS, handover_label, shift_label
+from thread_engine.extract import llm
 from thread_engine.extract.context import extract_note
 from thread_engine.extract.keyword import keyword_reading
 from thread_engine.link import Unlinked
@@ -105,6 +107,7 @@ def meta(world: World) -> dict:
         checkpoints=[dict(at=t.isoformat(), label=checkpoint_label(t, world.now)) for t in world.checkpoints()],
         residents=len(facility.RESIDENTS),
         synthetic=True,
+        llm=llm_status(),
         demonstration_rule="A measurement meeting the care-plan target within 8 h of the documented response "
                            "(12 h for mobility) counts as verified. Demonstration rule, not clinical guidance.",
     )
@@ -243,12 +246,28 @@ def residents(world: World) -> list[dict]:
     return out
 
 
-def lab_extract(text: str, resident_id: str, at: datetime) -> dict:
+def llm_status() -> dict:
+    return dict(available=bool(os.environ.get("ANTHROPIC_API_KEY")), model=llm.MODEL)
+
+
+def lab_extract(text: str, resident_id: str, at: datetime, use_llm: bool = False) -> dict:
     rec = SourceRecord(source_id="N-LAB", resident_id=resident_id, source_type="progress_note", event_time=at,
                        recorded_at=at, author="Note lab", author_role="RN", text=text)
     events = extract_note(rec, facility.CARE_PLAN)
-    return dict(text=text, resident=resident_card(resident_id), events=[dump(e) for e in events],
-                keyword=keyword_reading(text, resident_id))
+    out = dict(text=text, resident=resident_card(resident_id), events=[dump(e) for e in events],
+               keyword=keyword_reading(text, resident_id), llm=None)
+    proposals = llm.cached(text)
+    if proposals is None and use_llm and llm_status()["available"]:
+        try:
+            proposals = llm.call_model(text)
+        except Exception as exc:  # network or API error: the rules reading still stands
+            out["llm"] = dict(error=f"Language model unavailable: {type(exc).__name__}", events=[], rejected=[])
+            return out
+    if proposals is not None:
+        rejected: list[llm.Rejection] = []
+        ev = llm.to_events(rec, proposals, facility.CARE_PLAN, rejected)
+        out["llm"] = dict(model=llm.MODEL, events=[dump(e) for e in ev], rejected=[dump(r) for r in rejected])
+    return out
 
 
 LAB_SAMPLES = [

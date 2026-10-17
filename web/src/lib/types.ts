@@ -40,6 +40,7 @@ export interface Meta {
   residents: number
   synthetic: boolean
   demonstration_rule: string
+  llm: { available: boolean; model: string }
 }
 
 export interface Reason {
@@ -251,6 +252,7 @@ export interface LabResult {
   resident: ResidentCard
   events: ClinicalEvent[]
   keyword: KeywordReading[]
+  llm: { model?: string; error?: string; events: ClinicalEvent[]; rejected: { quote: string; reason: string }[] } | null
 }
 
 export interface ResidentRow extends ResidentCard {
