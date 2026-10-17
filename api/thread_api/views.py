@@ -32,7 +32,7 @@ STATE_LABEL = {
 }
 REASON_LABEL = {
     "recurrent_signal": "Recurred",
-    "no_response_documented": "No response documented",
+    "no_response_documented": "No response since last signal",
     "response_without_outcome": "Response, no outcome",
     "planned_not_confirmed": "Plan not confirmed",
     "qualitative_only": "No measurement",
