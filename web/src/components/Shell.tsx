@@ -41,14 +41,15 @@ export function Shell({ children }: { children: ReactNode }) {
             </span>
           </Link>
 
-          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-2 text-[14px]">
+          <div className="flex min-w-0 flex-1 basis-full flex-wrap items-center gap-x-4 gap-y-2 text-[14px] md:basis-auto">
             <span className="text-ink-2">
-              <span className="font-bold text-ink">{m?.facility ?? 'Valleyview Commons'}</span> · Maple & Birch wings
+              <span className="font-bold text-ink">{m?.facility ?? 'Valleyview Commons'}</span>
+              <span className="hidden sm:inline"> · Maple & Birch wings</span>
             </span>
             <label className="flex items-center gap-2">
               <span className="text-ink-3">Viewing</span>
               <select
-                className="input w-auto py-0.5 pr-7 text-[14px]"
+                className="input w-auto max-w-[min(15rem,calc(100vw-7rem))] py-0.5 pr-7 text-[14px]"
                 value={current}
                 onChange={(e) => setAsOf(e.target.value === m?.now ? null : e.target.value)}
                 aria-label="Point in time to view"

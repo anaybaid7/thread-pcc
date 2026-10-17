@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from collections import Counter
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
@@ -115,6 +116,7 @@ def meta(world: World) -> dict:
 
 def summary(t: ConcernThread) -> dict:
     counted = [e for e in t.events if not e.duplicate_of and "historical" not in e.flags]
+    roles = Counter(s.role for s in t.steps)
     reviewed = [r for r in t.reviews if r.action_type == "mark_reviewed"]
     return dict(
         thread_id=t.thread_id,
@@ -129,7 +131,7 @@ def summary(t: ConcernThread) -> dict:
         reasons=[dict(code=c.value, label=REASON_LABEL[c.value]) for c in t.reason_codes],
         counts=dict(
             signals=sum(e.is_signal for e in counted),
-            responses=sum(e.is_response for e in counted),
+            responses=roles["response"],
             plans=sum(e.modality.value == "planned" for e in counted),
             gaps=len(t.gaps),
             notes=len({e.source_id for e in t.events if e.source_type == "progress_note"}),
