@@ -97,7 +97,7 @@ def metrics(outcomes: list[Outcome], notes: bool) -> dict:
         review=dict(tp=tp, fp=fp, fn=fn, tn=tn, recall=_ratio(tp, tp + fn), false_positive_rate=_ratio(fp, fp + tn),
                     precision=_ratio(tp, tp + fp)),
         state_accuracy=_ratio(sum(o.state == o.scenario.expected_state for o in outcomes), len(outcomes)),
-        false_closures=sum(o.state == ThreadState.OUTCOME_VERIFIED != o.scenario.expected_state for o in outcomes),
+        false_closures=sum(o.state == ThreadState.OUTCOME_VERIFIED and o.scenario.needs_review for o in outcomes),
         missed_reviews=fn,
         links=dict(precision=_ratio(hit_links, pred_links), recall=_ratio(hit_links, gold_links),
                    f1=_f1(_ratio(hit_links, pred_links), _ratio(hit_links, gold_links))),
@@ -133,9 +133,10 @@ def errors(outcomes: list[Outcome]) -> list[dict]:
         s = o.scenario
         if o.state == s.expected_state and o.needs_review == s.needs_review:
             continue
-        kind = ("missed review" if s.needs_review and not o.needs_review else
+        kind = ("false closure" if o.state == ThreadState.OUTCOME_VERIFIED and s.needs_review else
+                "missed review" if s.needs_review and not o.needs_review else
                 "false alarm" if o.needs_review and not s.needs_review else
-                "false closure" if o.state == ThreadState.OUTCOME_VERIFIED else "wrong state")
+                "spurious thread" if s.expected_state is None else "wrong state")
         out.append(dict(
             scenario_id=s.scenario_id, family=s.family, split=s.split, description=s.description, kind=kind,
             expected=_state(s.expected_state), got=_state(o.state),

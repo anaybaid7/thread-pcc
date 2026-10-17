@@ -828,7 +828,7 @@
       "precision": 1.0
      },
      "state_accuracy": 0.737,
-     "false_closures": 6,
+     "false_closures": 4,
      "missed_reviews": 4,
      "links": {
       "precision": 0.917,
@@ -858,7 +858,7 @@
       "precision": 1.0
      },
      "state_accuracy": 0.553,
-     "false_closures": 10,
+     "false_closures": 8,
      "missed_reviews": 10,
      "links": {
       "precision": 0.75,
@@ -889,7 +889,7 @@
      "precision": 1.0
     },
     "state_accuracy": 0.645,
-    "false_closures": 16,
+    "false_closures": 12,
     "missed_reviews": 14,
     "links": {
      "precision": 0.857,
@@ -1010,7 +1010,7 @@
      "family": "K1",
      "split": "dev",
      "description": "Trap: an amount offered is not an amount drunk",
-     "kind": "missed review",
+     "kind": "false closure",
      "expected": "unverified",
      "got": "outcome_verified",
      "notes": [
@@ -1027,7 +1027,7 @@
      "family": "K1",
      "split": "dev",
      "description": "Trap: an amount offered is not an amount drunk",
-     "kind": "missed review",
+     "kind": "false closure",
      "expected": "unverified",
      "got": "outcome_verified",
      "notes": [
@@ -1044,7 +1044,7 @@
      "family": "K2",
      "split": "dev",
      "description": "Trap: 'no improvement' after a response",
-     "kind": "missed review",
+     "kind": "false closure",
      "expected": "persistent_signal",
      "got": "outcome_verified",
      "notes": [
@@ -1062,7 +1062,7 @@
      "family": "K2",
      "split": "dev",
      "description": "Trap: 'no improvement' after a response",
-     "kind": "missed review",
+     "kind": "false closure",
      "expected": "persistent_signal",
      "got": "outcome_verified",
      "notes": [
@@ -1150,7 +1150,7 @@
      "family": "N2",
      "split": "dev",
      "description": "No concern, a note about someone else",
-     "kind": "false closure",
+     "kind": "spurious thread",
      "expected": "no thread",
      "got": "outcome_verified",
      "notes": [
@@ -1167,7 +1167,7 @@
      "family": "N2",
      "split": "dev",
      "description": "No concern, a note about someone else",
-     "kind": "false closure",
+     "kind": "spurious thread",
      "expected": "no thread",
      "got": "outcome_verified",
      "notes": [
@@ -1200,7 +1200,7 @@
      "family": "G",
      "split": "held_out",
      "description": "A note says better; the round says otherwise",
-     "kind": "missed review",
+     "kind": "false closure",
      "expected": "persistent_signal",
      "got": "outcome_verified",
      "notes": [
@@ -1217,7 +1217,7 @@
      "family": "G",
      "split": "held_out",
      "description": "A note says better; the round says otherwise",
-     "kind": "missed review",
+     "kind": "false closure",
      "expected": "persistent_signal",
      "got": "outcome_verified",
      "notes": [
@@ -1234,7 +1234,7 @@
      "family": "K1",
      "split": "held_out",
      "description": "Trap: an amount offered is not an amount drunk",
-     "kind": "missed review",
+     "kind": "false closure",
      "expected": "unverified",
      "got": "outcome_verified",
      "notes": [
@@ -1251,7 +1251,7 @@
      "family": "K1",
      "split": "held_out",
      "description": "Trap: an amount offered is not an amount drunk",
-     "kind": "missed review",
+     "kind": "false closure",
      "expected": "unverified",
      "got": "outcome_verified",
      "notes": [
@@ -1268,7 +1268,7 @@
      "family": "K2",
      "split": "held_out",
      "description": "Trap: 'no improvement' after a response",
-     "kind": "missed review",
+     "kind": "false closure",
      "expected": "persistent_signal",
      "got": "outcome_verified",
      "notes": [
@@ -1285,7 +1285,7 @@
      "family": "K2",
      "split": "held_out",
      "description": "Trap: 'no improvement' after a response",
-     "kind": "missed review",
+     "kind": "false closure",
      "expected": "persistent_signal",
      "got": "outcome_verified",
      "notes": [
@@ -1302,7 +1302,7 @@
      "family": "K3",
      "split": "held_out",
      "description": "Trap: 'not drinking well' after a response",
-     "kind": "missed review",
+     "kind": "false closure",
      "expected": "persistent_signal",
      "got": "outcome_verified",
      "notes": [
@@ -1319,7 +1319,7 @@
      "family": "K3",
      "split": "held_out",
      "description": "Trap: 'not drinking well' after a response",
-     "kind": "missed review",
+     "kind": "false closure",
      "expected": "persistent_signal",
      "got": "outcome_verified",
      "notes": [
@@ -1370,7 +1370,7 @@
      "family": "N2",
      "split": "held_out",
      "description": "No concern, a note about someone else",
-     "kind": "false closure",
+     "kind": "spurious thread",
      "expected": "no thread",
      "got": "outcome_verified",
      "notes": [
@@ -1387,7 +1387,7 @@
      "family": "N2",
      "split": "held_out",
      "description": "No concern, a note about someone else",
-     "kind": "false closure",
+     "kind": "spurious thread",
      "expected": "no thread",
      "got": "outcome_verified",
      "notes": [
@@ -2251,7 +2251,7 @@
       "precision": 1.0
      },
      "state_accuracy": 0.974,
-     "false_closures": 1,
+     "false_closures": 0,
      "missed_reviews": 0,
      "links": {
       "precision": 0.913,
@@ -2312,7 +2312,7 @@
      "precision": 1.0
     },
     "state_accuracy": 0.961,
-    "false_closures": 1,
+    "false_closures": 0,
     "missed_reviews": 0,
     "links": {
      "precision": 0.883,
@@ -2433,7 +2433,7 @@
      "family": "N1",
      "split": "dev",
      "description": "No concern, positive notes",
-     "kind": "false closure",
+     "kind": "spurious thread",
      "expected": "no thread",
      "got": "outcome_verified",
      "notes": [

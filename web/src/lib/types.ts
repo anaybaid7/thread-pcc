@@ -268,3 +268,35 @@ export interface AuditRow {
   detail: string
   thread_id: string | null
 }
+
+export interface EvalMetrics {
+  scenarios: number
+  review: { tp: number; fp: number; fn: number; tn: number; recall: number | null; false_positive_rate: number | null; precision: number | null }
+  state_accuracy: number | null
+  false_closures: number
+  missed_reviews: number
+  links: { precision: number | null; recall: number | null; f1: number | null }
+  unsupported_claim_rate: number
+  explanation_sentences: number
+  replay_accuracy?: number | null
+  extraction?: { precision: number | null; recall: number | null; f1: number | null; gold_events: number; predicted_events: number }
+}
+
+export interface EvalConfig {
+  key: string
+  label: string
+  splits: { dev: EvalMetrics; held_out: EvalMetrics }
+  all: EvalMetrics
+  families: Record<string, { correct: number; total: number; expected: string }>
+  errors: { scenario_id: string; family: string; split: string; description: string; kind: string; expected: string; got: string; notes: string[]; explanation: string[] }[]
+  extraction_misses: { scenario_id: string; split: string; note: string; expected: string[]; got: string[] }[]
+}
+
+export interface Evaluation {
+  title: string
+  caveat: string
+  scenarios: number
+  splits: { dev: number; held_out: number }
+  families: [string, string][]
+  configs: EvalConfig[]
+}

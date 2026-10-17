@@ -17,4 +17,4 @@ def test_every_error_is_explained():
     report = evaluate(generate("dev", variants=1))
     for c in report["configs"]:
         for e in c["errors"]:
-            assert e["kind"] in {"missed review", "false alarm", "false closure", "wrong state"}
+            assert e["kind"] in {"missed review", "false alarm", "false closure", "spurious thread", "wrong state"}
