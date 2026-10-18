@@ -38,3 +38,14 @@ test('practice mode: charting on the top resident does not switch the panel to s
   await expect(page.getByRole('heading', { name: /^Harold Singh/ })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Check Harold' })).toBeVisible()
 })
+
+test('practice mode: the self-running demo plays all three workflows and leaves nothing unowned', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', (e) => errors.push(e.message))
+  await page.goto('./?demo=fast')
+  await expect(page.locator('body[data-demo="done"]')).toBeAttached({ timeout: 60_000 })
+  await expect(page.locator('[data-demo="lane-evelyn"]')).toContainText('Taken on by Daniel')
+  await page.getByRole('navigation', { name: 'Workflows' }).getByRole('link', { name: /Carry it forward/ }).click()
+  await expect(page.getByText(/nothing left unowned/)).toBeVisible()
+  expect(errors).toEqual([])
+})

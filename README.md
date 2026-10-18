@@ -8,9 +8,13 @@ the shift change. THREAD carries each change from the person who sees it to a re
 
 Built for the PointClickCare **Catch It Early** challenge. Residents, staff and ranges are fictional.
 
-**Try it:** https://anaybaid7.github.io/thread-pcc/ (practice mode, runs in your browser)
+**Try it:** https://anaybaid7.github.io/thread-pcc/ (practice mode, runs in your browser). Press **Play the demo** and
+it runs all three workflows by itself, with captions, in under two minutes.
 
-![Home](docs/screenshots/home.png)
+![The relay](docs/screenshots/relay.png)
+
+The home screen is the **relay**: one row per concern, five stages from *noticed* to *closed on a recorded outcome*,
+and where the baton is held right now (red), or where a step should have happened and didn't (amber).
 
 ## Three workflows
 
@@ -22,8 +26,10 @@ Built for the PointClickCare **Catch It Early** challenge. Residents, staff and 
 
 | | |
 |---|---|
-| ![Spot it](docs/screenshots/spot.png) | ![Size it up](docs/screenshots/size.png) |
-| ![Carry it forward](docs/screenshots/handover.png) | **Demo in 3 minutes:** [docs/PITCH.md](docs/PITCH.md) |
+| ![Spot it](docs/screenshots/spot.png) | ![Size it up, with a Gemini SBAR](docs/screenshots/size.png) |
+| ![Carry it forward](docs/screenshots/handover.png) | ![The relay afterwards](docs/screenshots/relay-after.png) |
+
+**Pitch video script and recording steps:** [docs/PITCH.md](docs/PITCH.md)
 
 The board is ordered by explicit reasons (recheck overdue, not yet seen by a nurse, offered with nothing recorded,
 watching). There is **no risk score**.
@@ -33,7 +39,7 @@ watching). There is **no risk score**.
 ```
 engine/   the ward: residents' usual, events, concerns, board, handover, SBAR facts (pure TypeScript, deterministic)
 server/   Fastify API: workspaces with an append-only command log in PostgreSQL (Vultr), Gemini SBAR drafts
-web/      Next.js: the three workflows; saved mode via the API, practice mode in the browser
+web/      Next.js: the relay and three workflows; saved mode via the API, practice mode in the browser; self-running demo
 e2e/      Playwright: all three workflows, saved and practice, desktop and phone, axe WCAG 2.1 AA
 ```
 
@@ -62,6 +68,7 @@ make e2e     # the three workflows in Chromium
 | `GEMINI_API_KEY`, `GEMINI_MODEL` | Server-side only; default model `gemini-3.8-flash` |
 | `THREAD_API_ORIGIN` | Where the web app proxies `/api`; read at **build** time |
 
-Not yet exercised against a live Vultr cluster or a live Gemini key; both fall back explicitly.
+Gemini has been exercised with a live key (`gemini-3.8-flash`, drafts in 3 to 8 s). Not yet run against a live Vultr
+cluster. Both fall back explicitly. `/?demo` starts the self-running demo on load.
 
 Prototype. Not clinical advice; not a substitute for staff assessment or facility procedures.
