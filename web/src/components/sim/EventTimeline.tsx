@@ -5,9 +5,9 @@ import { useEffect, useRef, useState } from 'react'
 import { toneOf } from '../motion'
 
 export const KIND: Record<EventKind, { label: string; color: string }> = {
-  observation: { label: 'Seen', color: 'var(--color-observation)' },
+  observation: { label: 'Observed', color: 'var(--color-observation)' },
   documentation: { label: 'Charted', color: 'var(--color-documentation)' },
-  action: { label: 'Done', color: 'var(--color-action)' },
+  action: { label: 'Action', color: 'var(--color-action)' },
   unknown: { label: 'Not known', color: 'var(--color-unknown)' },
 }
 
@@ -64,15 +64,15 @@ function EventRow({ item, fresh }: { item: Extract<TimelineItem, { type: 'event'
   const k = KIND[item.kind]
   const unknown = item.kind === 'unknown'
   return (
-    <li className={`relative flex gap-3 pb-3 ${fresh ? 'flip-in' : ''}`}>
+    <li className={`relative flex gap-3 pb-3 ${fresh ? 'enter' : ''}`}>
       <div className="relative z-10 pt-2">
         <KindMark kind={item.kind} />
       </div>
       <div
-        className={`min-w-0 flex-1 rounded-xl border transition-shadow ${unknown ? 'border-dashed border-unknown/50 bg-[#fbf6f0]' : 'border-line bg-surface'} ${fresh ? 'shadow-[0_8px_24px_-12px_rgb(14_90_97/0.45)] ring-2 ring-accent/25' : ''}`}
+        className={`min-w-0 flex-1 rounded-xl border transition-shadow ${unknown ? 'border-dashed border-unknown/50 bg-[#fbf6f0]' : 'border-line bg-surface'} ${fresh ? 'ring-1 ring-accent/50' : ''}`}
       >
         <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex w-full items-start gap-2 px-3 py-2 text-left">
-          <span className="mt-px shrink-0 rounded-md bg-sunken px-1.5 py-0.5 text-[12px] font-bold text-ink tabular-nums">
+          <span className="mt-px shrink-0 font-mono text-[12px] font-medium text-ink-2 tabular-nums">
             {item.day.slice(0, 3)} {item.clock}
           </span>
           <span className="min-w-0 flex-1 text-[14.5px] leading-snug font-medium">{item.fact}</span>
@@ -80,9 +80,7 @@ function EventRow({ item, fresh }: { item: Extract<TimelineItem, { type: 'event'
             ▸
           </span>
         </button>
-        {item.quote && (
-          <p className="relative mx-3 mb-2.5 inline-block rounded-2xl rounded-tl-sm bg-accent-soft px-3 py-1.5 font-serif text-[15px] text-accent-strong italic">“{item.quote}”</p>
-        )}
+        {item.quote && <p className="mx-3 mb-2 border-l-2 border-accent/40 pl-2.5 font-serif text-[14.5px] text-ink-2 italic">“{item.quote}”</p>}
         {open && (
           <div className="pop border-t border-line px-3 py-2 text-[13.5px] text-ink-2">
             <p>{item.text}</p>
@@ -99,12 +97,12 @@ function EventRow({ item, fresh }: { item: Extract<TimelineItem, { type: 'event'
 function DecisionRow({ item, fresh }: { item: Extract<TimelineItem, { type: 'decision' }>; fresh: boolean }) {
   const tone = toneOf(item.earned, item.max)
   return (
-    <li className={`relative flex gap-3 pb-3 ${fresh ? 'flip-in' : ''}`}>
-      <div className="relative z-10 grid size-6 shrink-0 rotate-45 place-items-center rounded-[5px] bg-ink" aria-hidden="true" style={{ marginTop: 10 }} />
+    <li className={`relative flex gap-3 pb-3 ${fresh ? 'enter' : ''}`}>
+      <div className="relative z-10 ml-1 size-4 shrink-0 rotate-45 bg-ink" aria-hidden="true" style={{ marginTop: 12 }} />
       <div className="flex min-w-0 flex-1 items-center gap-3 rounded-xl border-2 border-ink/85 bg-surface px-3 py-2">
         <span className="min-w-0 flex-1">
           <span className="block text-[11.5px] font-semibold tracking-wide text-ink-3 uppercase">
-            {item.day.slice(0, 3)} {item.clock} · you decided
+            {item.day.slice(0, 3)} {item.clock} · your decision
           </span>
           <span className="block text-[14px] font-medium">{item.choice}</span>
         </span>
@@ -139,12 +137,12 @@ export function EventTimeline({ view }: { view: AttemptView }) {
     <section className="card p-4 sm:p-5" aria-labelledby="timeline-title">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 id="timeline-title" className="text-[18px]">
-          Timeline
+          Entries
         </h2>
         <KindLegend />
       </div>
       {count === 0 ? (
-        <p className="mt-4 grid place-items-center rounded-xl border border-dashed border-line-strong py-8 text-[14px] text-ink-3">Nothing yet. Draw the first event.</p>
+        <p className="mt-4 grid place-items-center rounded-xl border border-dashed border-line-strong py-8 text-[14px] text-ink-3">Nothing yet.</p>
       ) : (
         <div aria-live="polite" aria-relevant="additions" className="mt-3">
           {groups.map((g, gi) => (
@@ -164,36 +162,38 @@ export function EventTimeline({ view }: { view: AttemptView }) {
   )
 }
 
-/** The deck of events still to come. Drawing reveals exactly one. */
-export function EventDeck({ onDraw, busy, count, disabled }: { onDraw: () => void; busy: boolean; count: number; disabled?: boolean }) {
-  const [drawing, setDrawing] = useState(false)
-  const draw = () => {
-    if (busy || disabled) return
-    setDrawing(true)
-    onDraw()
-    window.setTimeout(() => setDrawing(false), 450)
-  }
+/** Advance the shift one entry at a time. A track shows where the clock is in the shift and the entries so far. */
+export function TransportBar({ view, onNext, busy }: { view: AttemptView; onNext: () => void; busy: boolean }) {
+  const { start, end } = view.window
+  const now = view.window.now ?? start
+  const pct = (t: number) => `${((Math.min(Math.max(t, start), end) - start) / (end - start)) * 100}%`
+  const events = view.timeline.filter((t) => t.type === 'event')
+  const decisions = view.timeline.filter((t) => t.type === 'decision')
+  const shiftEdges: number[] = []
+  for (let t = Math.ceil(start / 60) * 60; t <= end; t += 60) if ([7, 15, 23].includes((t % 1440) / 60)) shiftEdges.push(t)
   return (
-    <div className="sticky bottom-3 z-20 mt-4 flex items-center gap-4 rounded-2xl border border-line-strong bg-surface/95 p-3 pr-4 shadow-xl backdrop-blur">
-      <div className={`deck ${drawing ? 'is-drawing' : ''}`}>
-        <button
-          type="button"
-          onClick={draw}
-          disabled={busy || disabled}
-          aria-keyshortcuts="n"
-          aria-label="Draw next event"
-          className="deck-card grid h-[64px] w-[104px] place-items-center rounded-[14px] text-[15px] font-semibold text-white shadow-lg disabled:opacity-60"
-        >
-          <span className="flex items-center gap-1.5">
-            Next <span aria-hidden="true">→</span>
-          </span>
-        </button>
+    <div className="sticky bottom-3 z-20 mt-4 flex items-center gap-4 rounded-xl border border-line-strong bg-surface/95 px-3 py-2.5 shadow-lg backdrop-blur">
+      <button type="button" onClick={onNext} disabled={busy} aria-keyshortcuts="n" className="btn btn-primary shrink-0 gap-2.5 px-4">
+        Next entry
+        <kbd className="rounded border border-white/40 px-1 font-mono text-[11px] font-medium">N</kbd>
+      </button>
+      <div className="relative h-8 min-w-0 flex-1" aria-hidden="true">
+        <div className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-sunken" />
+        <div className="absolute top-1/2 left-0 h-1 -translate-y-1/2 rounded-full bg-accent/50" style={{ width: pct(now) }} />
+        {shiftEdges.map((t) => (
+          <span key={t} className="absolute top-1 h-6 w-px bg-line-strong" style={{ left: pct(t) }} />
+        ))}
+        {events.map((e) => (
+          <span key={e.id} className="absolute top-1/2 size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-ink/70" style={{ left: pct(e.t) }} />
+        ))}
+        {decisions.map((d) => (
+          <span key={d.id} className="absolute top-1/2 size-2.5 -translate-x-1/2 -translate-y-1/2 rotate-45 bg-ink" style={{ left: pct(d.t) }} />
+        ))}
+        <span className="absolute top-0 h-8 w-0.5 -translate-x-1/2 bg-ink" style={{ left: pct(now) }} />
       </div>
-      <div className="min-w-0 text-[13px] leading-tight">
-        <b className="block text-[14px] text-ink">Draw the next event</b>
-        <span className="text-ink-3">
-          {count} so far · press <kbd className="rounded border border-line-strong px-1 text-[11px]">N</kbd>
-        </span>
+      <div className="hidden shrink-0 text-right text-[12px] leading-tight sm:block">
+        <b className="block font-mono text-[13px] text-ink tabular-nums">{view.now?.label ?? ''}</b>
+        <span className="text-ink-3">{events.length} entries</span>
       </div>
     </div>
   )

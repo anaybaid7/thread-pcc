@@ -6,10 +6,10 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { DebriefPanel } from '@/components/sim/DebriefPanel'
 import { DecisionPanel, FeedbackCard } from '@/components/sim/DecisionPanel'
-import { EventDeck, EventTimeline, KindMark } from '@/components/sim/EventTimeline'
+import { EventTimeline, KIND, KindMark, TransportBar } from '@/components/sim/EventTimeline'
 import { HandoverEditor } from '@/components/sim/HandoverEditor'
 import { ResidentCard } from '@/components/sim/ResidentCard'
-import { BinIcon } from '@/components/sim/SortBoard'
+import { ShiftTimeline } from '@/components/sim/ShiftTimeline'
 import { ThreadView } from '@/components/sim/ThreadView'
 import { ApiError, backendFor, local, server, STATIC, type Health, type Mode, type Snapshot } from '@/lib/sim'
 
@@ -26,12 +26,18 @@ function Loading() {
 }
 
 const STAGES: { key: AttemptView['stage']; label: string }[] = [
-  { key: 'A', label: 'Baseline' },
+  { key: 'A', label: 'Briefing' },
   { key: 'B', label: 'The change' },
   { key: 'C', label: 'What next' },
   { key: 'handover', label: 'Handover' },
   { key: 'debrief', label: 'Debrief' },
 ]
+
+const fmtT = (t: number, days: string[]) => {
+  const d = Math.floor(t / 1440)
+  const m = t % 1440
+  return `${(days[d] ?? '').slice(0, 3)} ${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
+}
 
 function Progress({ stage }: { stage: AttemptView['stage'] }) {
   const at = STAGES.findIndex((s) => s.key === stage)
@@ -39,8 +45,8 @@ function Progress({ stage }: { stage: AttemptView['stage'] }) {
     <ol className="flex items-center gap-1" aria-label="Progress">
       {STAGES.map((s, i) => (
         <li key={s.key} className="flex flex-1 flex-col gap-1" aria-current={i === at ? 'step' : undefined}>
-          <span className={`h-1.5 rounded-full transition-colors duration-500 ${i < at ? 'bg-accent' : i === at ? 'bg-accent/60' : 'bg-line'}`} />
-          <span className={`hidden text-[11.5px] font-medium sm:block ${i === at ? 'text-accent-strong' : 'text-ink-3'}`}>{s.label}</span>
+          <span className={`h-1 rounded-full transition-colors duration-500 ${i < at ? 'bg-ink' : i === at ? 'bg-ink/50' : 'bg-line'}`} />
+          <span className={`hidden text-[11.5px] font-medium sm:block ${i === at ? 'text-ink' : 'text-ink-3'}`}>{s.label}</span>
         </li>
       ))}
     </ol>
@@ -48,72 +54,108 @@ function Progress({ stage }: { stage: AttemptView['stage'] }) {
 }
 
 function ModeChip({ mode, health }: { mode: Mode; health: Health | null | undefined }) {
-  if (mode === 'practice') return <span className="chip border-mid/40 bg-mid-soft text-mid">Practice · not saved</span>
-  const where = health?.database.provider === 'vultr' ? 'Vultr' : health?.database.provider === 'pglite' ? 'local DB' : 'PostgreSQL'
-  return <span className="chip border-good/40 bg-good-soft text-good">● Saved · {where}</span>
+  if (mode === 'practice') return <span className="chip border-mid/40 text-mid">Practice · not saved</span>
+  const where = health?.database.provider === 'vultr' ? 'Vultr PostgreSQL' : health?.database.provider === 'pglite' ? 'local DB' : 'PostgreSQL'
+  return <span className="chip border-good/40 text-good">Saved · {where}</span>
 }
 
 function Prebrief({ view, busy, onStart }: { view: AttemptView; busy: boolean; onStart: () => void }) {
-  const name = view.scenario.resident.preferredName
-  const steps: [React.ReactNode, string][] = [
-    [<span key="a" className="text-[18px]">◎</span>, `Learn ${name}’s usual`],
-    [<KindMark key="b" kind="observation" size={22} />, 'Draw events one by one'],
-    [<BinIcon key="c" tag="assumption" />, 'Decide with what you know'],
-    [<span key="d" className="text-[18px]">↺</span>, 'Debrief, then replay'],
+  const w = view.window
+  const rubric: [string, number][] = [
+    ['Recognising change from baseline', 30],
+    ['Communication and action', 30],
+    ['Facts vs. assumptions vs. unknowns', 25],
+    ['Handover clarity', 15],
   ]
   return (
-    <section className="card flip-in overflow-hidden" aria-labelledby="prebrief-title">
-      <div className="bg-gradient-to-r from-accent to-accent-strong p-5 text-white sm:p-6">
-        <p className="text-[12px] font-semibold tracking-wider uppercase opacity-80">{view.scenario.title}</p>
-        <h2 id="prebrief-title" className="mt-1 text-[26px] text-white">
-          Off day, or something more?
+    <section className="card enter overflow-hidden" aria-labelledby="prebrief-title">
+      <div className="border-b border-line px-5 pt-5 pb-4 sm:px-6">
+        <p className="eyebrow">Briefing</p>
+        <h2 id="prebrief-title" className="mt-1 text-[24px]">
+          {view.scenario.title}
         </h2>
       </div>
-      <div className="p-5 sm:p-6">
-        <ol className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {steps.map(([icon, t], i) => (
-            <li key={t} className="flex flex-col items-center gap-2 rounded-xl bg-sunken/70 p-3 text-center text-[13.5px] font-medium">
-              <span className="grid size-10 place-items-center rounded-full bg-surface text-accent shadow-sm" aria-hidden="true">
-                {icon}
-              </span>
-              <span>
-                <span className="text-ink-3">{i + 1}. </span>
-                {t}
-              </span>
-            </li>
-          ))}
-        </ol>
-        <div className="mt-5 flex flex-wrap items-center gap-3">
-          <button className="btn btn-primary btn-lg" onClick={onStart} disabled={busy}>
-            Start the shift →
-          </button>
-          <span className="text-[12.5px] text-ink-3">~8 min · fictional · not clinical guidance</span>
+      <dl className="grid divide-y divide-line sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+        <div className="p-5">
+          <dt className="eyebrow">Your role</dt>
+          <dd className="mt-1.5 text-[14px]">{view.scenario.role.replace(/^You are /, '')}</dd>
         </div>
+        <div className="p-5">
+          <dt className="eyebrow">The shift</dt>
+          <dd className="mt-1.5 font-mono text-[13.5px]">
+            {fmtT(w.start, w.days)} to {fmtT(w.end, w.days)}
+          </dd>
+          <dd className="mt-1 text-[13px] text-ink-3">Entries arrive one at a time. Nothing happens until you advance.</dd>
+        </div>
+        <div className="p-5">
+          <dt className="eyebrow">Assessed on</dt>
+          <dd className="mt-1.5">
+            <ul className="space-y-1 text-[13px]">
+              {rubric.map(([l, n]) => (
+                <li key={l} className="flex justify-between gap-3">
+                  <span>{l}</span>
+                  <span className="font-mono text-ink-3">{n}</span>
+                </li>
+              ))}
+            </ul>
+          </dd>
+        </div>
+      </dl>
+      <div className="flex flex-wrap items-center gap-3 border-t border-line px-5 py-4 sm:px-6">
+        <button className="btn btn-primary" onClick={onStart} disabled={busy}>
+          Start the shift
+        </button>
+        <span className="text-[12.5px] text-ink-3">Fictional resident · about 8 minutes · not clinical guidance</span>
       </div>
     </section>
   )
 }
 
-function ObservePanel() {
-  const tips: [React.ReactNode, string][] = [
-    [<span key="a" className="text-[16px] text-accent">≠</span>, 'Different for her?'],
-    [<BinIcon key="b" tag="observed" />, 'Seen, or assumed?'],
-    [<BinIcon key="c" tag="unknown" />, 'What nobody knows'],
-  ]
+/** What is known so far: entries by kind, the open unknowns, and who knows of the change. */
+function KnownSoFar({ view }: { view: AttemptView }) {
+  const events = view.timeline.filter((t) => t.type === 'event')
+  const count = (k: keyof typeof KIND) => events.filter((e) => e.kind === k).length
+  const unknowns = events.filter((e) => e.kind === 'unknown')
+  const knowers = view.people.filter((p) => p.since != null)
   return (
-    <section className="card p-4 sm:p-5" aria-label="What to watch for">
-      <p className="eyebrow">Watch for</p>
-      <ul className="mt-3 space-y-2">
-        {tips.map(([icon, t]) => (
-          <li key={t} className="flex items-center gap-3 rounded-lg bg-sunken/60 px-3 py-2.5 text-[14px] font-medium">
-            <span className="grid size-7 place-items-center" aria-hidden="true">
-              {icon}
-            </span>
-            {t}
-          </li>
+    <section className="card p-4 sm:p-5" aria-labelledby="known-title">
+      <h2 id="known-title" className="text-[18px]">
+        Known so far
+      </h2>
+      <dl className="mt-3 grid grid-cols-4 gap-2 text-center">
+        {(Object.keys(KIND) as (keyof typeof KIND)[]).map((k) => (
+          <div key={k} className="flex flex-col-reverse rounded-lg border border-line py-2">
+            <dt className="mt-0.5 flex items-center justify-center gap-1 text-[11.5px] text-ink-3">
+              <KindMark kind={k} size={12} />
+              {KIND[k].label}
+            </dt>
+            <dd className="font-mono text-[20px] font-semibold tabular-nums">{count(k)}</dd>
+          </div>
         ))}
-      </ul>
-      <p className="mt-3 text-[12.5px] text-ink-3">A decision appears when there is something to decide.</p>
+      </dl>
+      {unknowns.length > 0 && (
+        <div className="mt-4">
+          <p className="eyebrow">Open unknowns</p>
+          <ul className="mt-1.5 space-y-1 text-[13.5px] text-ink-2">
+            {unknowns.map((u) => (
+              <li key={u.id} className="grid grid-cols-[44px_1fr] gap-2">
+                <span className="font-mono text-[12px] text-ink-3">{u.clock}</span>
+                {u.fact}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <div className="mt-4">
+        <p className="eyebrow">Aware of the change</p>
+        <p className="mt-1.5 text-[13.5px] text-ink-2">
+          {knowers.length ? knowers.map((p) => p.label).join(', ') : 'Nobody yet'}
+          <span className="text-ink-3">
+            {' '}
+            · {knowers.length} of {view.people.length}
+          </span>
+        </p>
+      </div>
     </section>
   )
 }
@@ -148,6 +190,8 @@ function Play() {
   const [busy, setBusy] = useState(false)
   const [health, setHealth] = useState<Health | null | undefined>(undefined)
   const [retry, setRetry] = useState<(() => void) | null>(null)
+  const [asOf, setAsOf] = useState<number | null>(null)
+  const [focus, setFocus] = useState<string | null>(null)
   const booted = useRef(false)
 
   const run = useCallback(async (fn: () => Promise<Snapshot>, again?: () => void) => {
@@ -157,6 +201,9 @@ function Play() {
       const s = await fn()
       setSnap(s)
       setRetry(null)
+      // New entries move the shift views back to "now".
+      setAsOf(null)
+      setFocus(null)
       return s
     } catch (e) {
       setError(e instanceof ApiError ? e : new ApiError(500, (e as Error).message))
@@ -191,7 +238,6 @@ function Play() {
     void begin()
   }, [begin])
 
-  // Bring the new task into view when the phase changes.
   const phase = snap?.view.phase
   useEffect(() => {
     if (phase === 'decision') document.getElementById('decision-title')?.scrollIntoView({ behavior: 'smooth', block: window.innerWidth < 1280 ? 'start' : 'nearest' })
@@ -232,11 +278,7 @@ function Play() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-[24px] sm:text-[28px]">
           {view.scenario.resident.name}
-          {view.now && (
-            <span key={view.now.label} className="pop ml-3 inline-block rounded-full bg-ink px-3 py-1 align-middle font-sans text-[14px] font-semibold text-white tabular-nums">
-              {view.now.label}
-            </span>
-          )}
+          {view.now && <span className="ml-3 inline-block rounded-md border border-line-strong px-2 py-0.5 align-middle font-mono text-[14px] font-medium text-ink-2 tabular-nums">{view.now.label}</span>}
         </h1>
         <div className="flex items-center gap-2">
           {snap.replayOf && <span className="chip text-ink-3">replay</span>}
@@ -253,10 +295,12 @@ function Play() {
         />
       )}
 
-      <div className="grid gap-5 lg:grid-cols-[290px_minmax(0,1fr)]">
-        <aside className="lg:sticky lg:top-4 lg:self-start">
-          <ResidentCard view={view} />
-        </aside>
+      <div className={`grid gap-5 ${view.phase === 'complete' ? '' : 'lg:grid-cols-[280px_minmax(0,1fr)]'}`}>
+        {view.phase !== 'complete' && (
+          <aside className="lg:sticky lg:top-4 lg:self-start">
+            <ResidentCard view={view} />
+          </aside>
+        )}
 
         <div className="min-w-0 space-y-5">
           {view.phase === 'prebrief' && (
@@ -269,18 +313,27 @@ function Play() {
           {(view.phase === 'playing' || view.phase === 'decision') && (
             <>
               <ThreadView view={view} />
-              <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+              <section className="card p-4 sm:p-5" aria-labelledby="shift-title">
+                <h2 id="shift-title" className="mb-3 text-[18px]">
+                  Shift timeline
+                </h2>
+                <ShiftTimeline view={view} asOf={asOf} onAsOf={setAsOf} focus={focus} onFocus={setFocus} />
+              </section>
+              <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
                 <div className="min-w-0">
                   <EventTimeline view={view} />
-                  {view.canAdvance && <EventDeck onDraw={next} busy={busy} count={events} />}
+                  {view.canAdvance && <TransportBar view={view} onNext={next} busy={busy} />}
                 </div>
                 <div className="min-w-0 space-y-5 xl:sticky xl:top-4">
                   {view.phase === 'decision' && view.decision ? (
                     <DecisionPanel key={view.decision.id} decision={view.decision} evidenceCount={events} busy={busy} onSubmit={decide} />
                   ) : showFeedback ? (
-                    <FeedbackCard key={view.feedback!.decisionId} feedback={view.feedback!} />
+                    <>
+                      <FeedbackCard key={view.feedback!.decisionId} feedback={view.feedback!} />
+                      <KnownSoFar view={view} />
+                    </>
                   ) : (
-                    <ObservePanel />
+                    <KnownSoFar view={view} />
                   )}
                 </div>
               </div>
@@ -303,7 +356,14 @@ function Play() {
 
           {view.phase === 'complete' && view.debrief && (
             <>
-              <DebriefPanel debrief={view.debrief} name={view.scenario.resident.preferredName} busy={busy} onReplay={replay} />
+              <DebriefPanel view={view} busy={busy} onReplay={replay} />
+              <section className="card p-4 sm:p-5" aria-labelledby="who-title">
+                <h2 id="who-title" className="text-[18px]">
+                  Who knew, and when
+                </h2>
+                <p className="mb-3 text-[13px] text-ink-3">Drag the cursor, or select a decision marker to see the entries it was scored on.</p>
+                <ShiftTimeline view={view} asOf={asOf} onAsOf={setAsOf} focus={focus} onFocus={setFocus} />
+              </section>
               <ThreadView view={view} />
               <div className="grid items-start gap-5 xl:grid-cols-2">
                 <EventTimeline view={view} />
@@ -335,17 +395,17 @@ function SubmittedHandover({ view }: { view: AttemptView }) {
       <h2 id="your-handover" className="text-[18px]">
         Your handover
       </h2>
-      <p className="text-[12.5px] text-ink-3">From {h.startedFrom === 'gemini' ? 'an AI draft' : h.startedFrom === 'template' ? 'the template' : 'scratch'}, as you submitted it</p>
+      <p className="text-[12.5px] text-ink-3">From {h.startedFrom === 'gemini' ? 'an AI draft' : h.startedFrom === 'template' ? 'the template' : 'scratch'}, as submitted</p>
       <dl className="mt-3 space-y-2 text-[14px]">
         {rows.map(([k, v]) => (
-          <div key={k} className="flex gap-3">
-            <dt className="grid size-6 shrink-0 place-items-center rounded bg-accent text-[12.5px] font-bold text-white">{k}</dt>
+          <div key={k} className="grid grid-cols-[24px_1fr] gap-3">
+            <dt className="font-mono text-[13px] font-semibold text-ink-3">{k}</dt>
             <dd className="whitespace-pre-line">{v || <span className="text-ink-3 italic">(empty)</span>}</dd>
           </div>
         ))}
         {h.draft.unknowns.length > 0 && (
-          <div className="flex gap-3">
-            <dt className="grid size-6 shrink-0 place-items-center rounded border-2 border-dashed border-unknown text-[12.5px] font-bold text-unknown">?</dt>
+          <div className="grid grid-cols-[24px_1fr] gap-3">
+            <dt className="font-mono text-[13px] font-semibold text-unknown">?</dt>
             <dd>
               <ul className="list-disc pl-4">
                 {h.draft.unknowns.map((u, i) => (
