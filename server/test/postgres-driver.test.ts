@@ -31,39 +31,28 @@ afterAll(async () => {
 })
 
 describe('node-postgres driver', () => {
-  it('migrates, seeds and plays through the API', async () => {
+  it('migrates and stores ward commands over the wire protocol', async () => {
     const app = buildApp({ db, gemini: new GeminiDrafter({ ...readConfig({}).gemini, apiKey: null }) })
-    const h = await app.inject({ method: 'GET', url: '/api/health' })
-    expect(h.json()).toMatchObject({ status: 'ok', database: { ok: true, provider: 'postgres', schema: '001_init.sql' } })
-    let res = (await app.inject({ method: 'POST', url: '/api/attempts', payload: { scenarioId: 'evelyn' } })).json()
-    while (res.view.canAdvance)
-      res = (await app.inject({ method: 'POST', url: `/api/attempts/${res.attempt.id}/advance`, payload: { revision: res.attempt.revision } })).json()
-    expect(res.view.phase).toBe('decision')
+    expect((await app.inject({ method: 'GET', url: '/api/health' })).json()).toMatchObject({ status: 'ok', database: { ok: true, provider: 'postgres', schema: '002_ward.sql' } })
+    const ws = (await app.inject({ method: 'POST', url: '/api/workspaces' })).json()
     const r = await app.inject({
       method: 'POST',
-      url: `/api/attempts/${res.attempt.id}/decisions`,
-      payload: {
-        revision: res.attempt.revision,
-        decisionId: 'd1',
-        recognition: ['intake', 'mobility', 'engagement'],
-        tags: { s1: 'observed', s2: 'observed', s3: 'assumption', s4: 'unknown', s5: 'unknown' },
-        choice: 'tell',
-      },
+      url: `/api/workspaces/${ws.id}/commands`,
+      payload: { seq: 0, command: { type: 'checkin', by: 'maya', residentId: 'evelyn', findings: [{ area: 'eating', status: 'different', finding: 'Ate about a quarter' }] } },
     })
     expect(r.statusCode, r.body).toBe(200)
-    const row = (await db.query<{ evidence_event_keys: string[] }>('select evidence_event_keys from player_decisions where attempt_id = $1', [res.attempt.id])).rows[0]!
-    expect(row.evidence_event_keys).toHaveLength(6)
+    expect((await db.query<{ n: number }>('select count(*)::int n from workspace_commands')).rows[0]!.n).toBe(1)
     await app.close()
   })
 
   it('rolls back a failed transaction', async () => {
     await expect(
       db.tx(async (q) => {
-        await q.query("insert into scenarios (id, title, subtitle) values ('tmp', 't', 's')")
+        await q.query("insert into workspaces (id) values ('00000000-0000-0000-0000-000000000001')")
         throw new Error('boom')
       }),
     ).rejects.toThrow('boom')
-    expect((await db.query("select 1 from scenarios where id = 'tmp'")).rows).toHaveLength(0)
+    expect((await db.query("select 1 from workspaces where id = '00000000-0000-0000-0000-000000000001'")).rows).toHaveLength(0)
   })
 })
 
