@@ -69,21 +69,34 @@ export class GeminiDrafter {
     if (this.recent.length >= this.cfg.maxRequestsPerHour) return fallback('The hourly AI request budget is used up, so the standard template was used.')
     this.recent.push(now)
 
-    let raw: unknown
-    try {
-      const res = await this.fetchImpl(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(this.cfg.model)}:generateContent`, {
+    const body = JSON.stringify({
+      systemInstruction: { parts: [{ text: SYSTEM }] },
+      contents: [{ role: 'user', parts: [{ text: JSON.stringify({ facts: facts.map((f) => f.text) }) }] }],
+      // A short, structured rewrite of given facts: low thinking keeps it fast.
+      generationConfig: { responseMimeType: 'application/json', responseJsonSchema: schema, temperature: 0.2, maxOutputTokens: 2048, thinkingConfig: { thinkingLevel: 'low' } },
+    })
+    const call = (model: string) =>
+      this.fetchImpl(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json', 'x-goog-api-key': this.cfg.apiKey },
+        headers: { 'content-type': 'application/json', 'x-goog-api-key': this.cfg.apiKey! },
         signal: AbortSignal.timeout(this.cfg.timeoutMs),
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: SYSTEM }] },
-          contents: [{ role: 'user', parts: [{ text: JSON.stringify({ facts: facts.map((f) => f.text) }) }] }],
-          generationConfig: { responseMimeType: 'application/json', responseJsonSchema: schema, temperature: 0.2, maxOutputTokens: 2048 },
-        }),
+        body,
       })
-      if (!res.ok) return fallback(`Gemini returned HTTP ${res.status}, so the standard template was used.`)
-      const body = (await res.json()) as { candidates?: { content?: { parts?: { text?: string }[] } }[] }
-      const text = body.candidates?.[0]?.content?.parts?.map((p) => p.text ?? '').join('') ?? ''
+    // Busy or rate-limited: retry once, then try the fallback model once. Anything else falls back to the template.
+    const attempts = [this.cfg.model, this.cfg.model, ...(this.cfg.fallbackModel && this.cfg.fallbackModel !== this.cfg.model ? [this.cfg.fallbackModel] : [])]
+    let raw: unknown
+    let used = this.cfg.model
+    try {
+      let res: Response | null = null
+      for (const [i, model] of attempts.entries()) {
+        if (i > 0) await new Promise((r) => setTimeout(r, 500))
+        used = model
+        res = await call(model)
+        if (![429, 500, 502, 503, 504].includes(res.status)) break
+      }
+      if (!res!.ok) return fallback(`Gemini returned HTTP ${res!.status}, so the standard template was used.`)
+      const out = (await res!.json()) as { candidates?: { content?: { parts?: { text?: string }[] } }[] }
+      const text = out.candidates?.[0]?.content?.parts?.map((p) => p.text ?? '').join('') ?? ''
       if (!text) return fallback('Gemini returned no draft, so the standard template was used.')
       raw = JSON.parse(text)
     } catch (e) {
@@ -100,6 +113,6 @@ export class GeminiDrafter {
     if (!parsed.success) return fallback('Gemini’s draft did not match the SBAR format, so the standard template was used.')
     const errors = checkSbar(parsed.data, facts)
     if (errors.length) return fallback('Gemini’s draft failed the grounding checks, so the standard template was used.', errors)
-    return { draft: { ...parsed.data, source: 'gemini' }, source: 'gemini', model: this.cfg.model, fallbackReason: null, validation: [], facts }
+    return { draft: { ...parsed.data, source: 'gemini' }, source: 'gemini', model: used, fallbackReason: null, validation: [], facts }
   }
 }

@@ -64,7 +64,7 @@ function Checks({ concern }: { concern: Concern }) {
 }
 
 function Decide({ concern }: { concern: Concern }) {
-  const { ward, send, sbar, busy } = useWard()
+  const { ward, send, sbar, busy, health } = useWard()
   const r = resident(concern.residentId)
   const areas = [...new Set([...concern.changed.map((c) => c.area), ...concern.unknown])] as Area[]
   const [mode, setMode] = useState<'watch' | 'escalate'>('watch')
@@ -120,7 +120,7 @@ function Decide({ concern }: { concern: Concern }) {
         <div className="space-y-2 rounded-lg border border-line p-3">
           {!draft ? (
             <button type="button" className="btn" onClick={() => void getDraft()} disabled={drafting}>
-              {drafting ? 'Drafting…' : 'Draft the SBAR'}
+              {drafting ? (health?.gemini.configured ? 'Gemini is drafting from the record…' : 'Drafting…') : 'Draft the SBAR'}
             </button>
           ) : (
             <>
@@ -225,8 +225,8 @@ function ConcernPanel({ concern }: { concern: Concern }) {
       </Panel>
 
       {concern.status !== 'resolved' && (
-        <Panel title="Check" aside={concern.unknown.length ? <span className="text-[12.5px] text-unknown">Not known: {concern.unknown.map((a) => AREAS[a].label.toLowerCase()).join(', ')}</span> : null}>
-          <Checks concern={concern} />
+        <Panel title={`Check ${r.preferred}`} aside={concern.unknown.length ? <span className="text-[12.5px] text-unknown">Not known: {concern.unknown.map((a) => AREAS[a].label.toLowerCase()).join(', ')}</span> : null}>
+          <Checks key={concern.id} concern={concern} />
         </Panel>
       )}
 
@@ -284,9 +284,15 @@ function OffersPanel({ residentId }: { residentId: string }) {
 export default function Size() {
   const { ward } = useWard()
   const items = board(ward!)
-  const [sel, setSel] = useState<string | null>(null)
+  // Pin the selection: the board reorders as things change, and the panel must not jump to someone else.
+  const [sel, setSel] = useState<{ key: string; residentId: string } | null>(() => {
+    const first = items.find((i) => i.tone !== 'done')
+    return first ? { key: first.key, residentId: first.residentId } : null
+  })
   const concerns = deriveConcerns(ward!)
-  const selected = items.find((i) => i.key === sel) ?? items.find((i) => i.tone !== 'done')
+  // If the item's key changes (an "offered" flag becomes a concern), stay on the same resident.
+  const selected =
+    items.find((i) => i.key === sel?.key) ?? items.find((i) => i.residentId === sel?.residentId && i.tone !== 'done') ?? items.find((i) => i.tone !== 'done')
   const concern = selected?.concernId ? concerns.find((c) => c.id === selected.concernId) : selected ? concerns.find((c) => c.residentId === selected.residentId && c.status !== 'resolved') : undefined
   const ev = concerns.find((c) => c.residentId === 'evelyn')
   const steps = [
@@ -313,7 +319,7 @@ export default function Size() {
                   <button
                     type="button"
                     aria-pressed={on}
-                    onClick={() => setSel(b.key)}
+                    onClick={() => setSel({ key: b.key, residentId: b.residentId })}
                     className={`w-full rounded-lg border border-l-4 px-3 py-2 text-left ${TONE[b.tone]} ${on ? 'border-ink bg-sunken/60' : 'border-line hover:border-line-strong'} ${b.tone === 'done' ? 'bg-sunken/40' : ''}`}
                   >
                     <span className="flex items-baseline justify-between gap-2">

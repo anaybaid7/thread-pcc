@@ -25,3 +25,16 @@ test('practice mode: a concern cannot be closed without an outcome, and reset re
   await page.getByRole('button', { name: 'Reset demo' }).click()
   await expect(page.getByText('Evelyn hasn’t been reported yet.')).toBeVisible()
 })
+
+test('practice mode: charting on the top resident does not switch the panel to someone else', async ({ page }) => {
+  await page.goto('./')
+  await page.getByRole('navigation', { name: 'Workflows' }).getByRole('link', { name: /Size it up/ }).click()
+  await expect(page.getByRole('heading', { name: /^Harold Singh/ })).toBeVisible()
+  await page.getByLabel('Check').selectOption('spo2')
+  await page.getByLabel(/Value/).fill('95')
+  await page.getByRole('button', { name: 'Record', exact: true }).click()
+  // Harold is no longer overdue, so the board reorders; the panel must stay on Harold.
+  await expect(page.getByText('Watching').first()).toBeVisible()
+  await expect(page.getByRole('heading', { name: /^Harold Singh/ })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Check Harold' })).toBeVisible()
+})

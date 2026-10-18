@@ -52,7 +52,11 @@ describe('SBAR drafts', () => {
   })
 
   it('falls back on HTTP errors, bad output, timeouts and the hourly budget', async () => {
-    expect((await drafter(reply({}, 500)).draft(ward, concernId)).fallbackReason).toMatch(/HTTP 500/)
+    expect((await drafter(reply({}, 400)).draft(ward, concernId)).fallbackReason).toMatch(/HTTP 400/)
+    const busy = reply({}, 503)
+    expect((await drafter(busy).draft(ward, concernId)).fallbackReason).toMatch(/HTTP 503/)
+    // Busy: retried once, then the fallback model once.
+    expect(busy.mock.calls.map((c) => String((c as unknown[])[0]).match(/models\/([^:]+)/)![1])).toEqual(['gemini-3.8-flash', 'gemini-3.8-flash', 'gemini-3.6-flash'])
     expect((await drafter(reply(model({ situation: 1 }))).draft(ward, concernId)).fallbackReason).toMatch(/format/)
     const slow = vi.fn((_u: string, init?: RequestInit) => new Promise<Response>((_, rej) => init?.signal?.addEventListener('abort', () => rej(init.signal!.reason)))) as unknown as typeof fetch
     const t = await drafter(slow, { timeoutMs: 20 }).draft(ward, concernId)

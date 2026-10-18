@@ -25,6 +25,7 @@ export interface Config {
   gemini: {
     apiKey: string | null
     model: string
+    fallbackModel: string | null
     timeoutMs: number
     maxDraftsPerAttempt: number
     maxRequestsPerHour: number
@@ -56,7 +57,8 @@ export function readConfig(env = process.env): Config {
     gemini: {
       apiKey: env.GEMINI_API_KEY?.trim() || null,
       model: env.GEMINI_MODEL?.trim() || 'gemini-3.8-flash',
-      timeoutMs: int(env, 'GEMINI_TIMEOUT_MS', 12_000),
+      fallbackModel: env.GEMINI_FALLBACK_MODEL === 'none' ? null : env.GEMINI_FALLBACK_MODEL?.trim() || 'gemini-3.6-flash',
+      timeoutMs: int(env, 'GEMINI_TIMEOUT_MS', 20_000),
       maxDraftsPerAttempt: int(env, 'GEMINI_MAX_DRAFTS_PER_ATTEMPT', 3),
       maxRequestsPerHour: int(env, 'GEMINI_MAX_REQUESTS_PER_HOUR', 60),
     },
