@@ -8,7 +8,7 @@ import { STATIC } from '@/lib/sim'
 const NAV = [
   { href: '/', label: 'Simulation' },
   ...(STATIC ? [] : [{ href: '/attempts/', label: 'Past attempts' }]),
-  { href: '/rationale/', label: 'Research & rationale' },
+  { href: '/rationale/', label: 'Why' },
 ]
 
 function Mark() {
@@ -57,10 +57,8 @@ export function Shell({ children }: { children: ReactNode }) {
       <footer className="border-t border-line">
         <div className="mx-auto max-w-[1240px] px-4 py-5 text-[13px] text-ink-3 sm:px-6">
           <p>
-            <b className="text-ink-2">Training prototype. Synthetic data only.</b> Every resident, staff member and event is fictional. THREAD is a
-            hackathon prototype for the PointClickCare “Catch It Early” challenge. Its scenarios and scoring are illustrative, have not been
-            validated, and need expert review and formal evaluation before any real-world use. It does not diagnose, predict, or replace staff
-            assessment or facility reporting procedures.
+            <b className="text-ink-2">Training prototype · synthetic data.</b> Fictional residents and staff. Not validated, not clinical advice, not a
+            substitute for staff assessment or facility procedures. Built for PointClickCare’s Catch It Early challenge.
           </p>
         </div>
       </footer>

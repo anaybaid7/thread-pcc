@@ -2,7 +2,7 @@ import { loadEnv, readConfig } from './config'
 import { describeError, isConnectionError, openDb } from './db'
 import { migrate, seed } from './migrate'
 
-/** npm run migrate | npm run seed — apply migrations, or migrations plus scenario seed data. */
+/** npm run migrate | npm run seed: apply migrations, or migrations plus scenario seed data. */
 loadEnv()
 const cmd = process.argv[2]
 const db = await openDb(readConfig().database)

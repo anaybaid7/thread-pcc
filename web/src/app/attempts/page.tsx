@@ -77,8 +77,8 @@ export default function Attempts() {
                     {PHASE[r.phase] ?? r.phase}
                     <span className="block text-[12.5px] text-ink-3">{r.decisions} decision{r.decisions === 1 ? '' : 's'}</span>
                   </td>
-                  <td className="px-4 py-3 text-ink-2">{r.course ? (r.course === 'persist' ? 'The change persists' : r.course === 'resolve' ? 'The change resolves' : r.course) : '—'}</td>
-                  <td className="px-4 py-3 text-right font-bold tabular-nums">{r.total_score ?? '—'}</td>
+                  <td className="px-4 py-3 text-ink-2">{r.course ? (r.course === 'persist' ? 'The change persists' : r.course === 'resolve' ? 'The change resolves' : r.course) : '·'}</td>
+                  <td className="px-4 py-3 text-right font-bold tabular-nums">{r.total_score ?? '·'}</td>
                   <td className="px-4 py-3 text-right">
                     <Link href={`/play?attempt=${r.id}`} className="link whitespace-nowrap">
                       {r.phase === 'complete' ? 'Open debrief' : 'Continue'}

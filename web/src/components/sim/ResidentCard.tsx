@@ -60,49 +60,49 @@ export function ResidentCard({ view }: { view: AttemptView }) {
     .join('')
   return (
     <section className="card p-4" aria-labelledby="resident-name">
-      <div className="flex items-start gap-3">
+      <div className="flex items-center gap-3">
         <div
           aria-hidden="true"
-          className="grid size-12 shrink-0 place-items-center rounded-full bg-accent-soft font-serif text-[18px] font-semibold text-accent-strong"
+          className="grid size-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-accent-soft to-[#cfe3e1] font-serif text-[18px] font-semibold text-accent-strong shadow-inner"
         >
           {initials}
         </div>
         <div className="min-w-0">
-          <h2 id="resident-name" className="text-[20px]">
+          <h2 id="resident-name" className="text-[19px]">
             {r.name}
           </h2>
-          <p className="text-[13.5px] text-ink-3">
-            {r.age} · Room {r.room} · {r.wing} wing
+          <p className="text-[13px] text-ink-3">
+            {r.age} · Room {r.room} · {r.wing}
           </p>
         </div>
-        <span className="chip ml-auto border-dashed text-ink-3" title="Fictional resident">
+        <span className="chip ml-auto border-dashed text-[11.5px] text-ink-3" title="Fictional resident">
           Synthetic
         </span>
       </div>
-      <p className="mt-3 text-[14px] text-ink-2">{r.summary}</p>
 
       <h3 className="eyebrow mt-4 font-sans">{possessive(r.pronoun)} usual</h3>
-      <ul className="mt-2 space-y-2">
+      <ul className="mt-2 space-y-1.5">
         {r.baseline.map((b) => (
-          <li key={b.id} className="flex gap-2.5 text-[14px]">
+          <li key={b.id} className="flex items-start gap-2.5 rounded-lg bg-sunken/60 px-2.5 py-2 text-[13.5px] leading-snug">
             <DimIcon dim={b.dimension} />
-            <span>{b.text}.</span>
+            <span>{b.text.replace(/^Usually (\w)/, (_, c: string) => c.toUpperCase())}</span>
           </li>
         ))}
       </ul>
 
-      <details className="group mt-3 text-[14px]">
-        <summary className="cursor-pointer list-none text-[13.5px] font-medium text-accent">
-          <span className="group-open:hidden">More about {r.preferredName} ▸</span>
+      <details className="group mt-3 text-[13.5px]">
+        <summary className="cursor-pointer list-none text-[13px] font-medium text-accent">
+          <span className="group-open:hidden">About {r.preferredName} ▸</span>
           <span className="hidden group-open:inline">Less ▾</span>
         </summary>
-        <ul className="mt-2 list-disc space-y-1 pl-5 text-ink-2">
+        <p className="mt-2 text-ink-2">{r.summary}</p>
+        <ul className="mt-1.5 list-disc space-y-1 pl-5 text-ink-2">
           {r.about.map((a) => (
             <li key={a}>{a}</li>
           ))}
         </ul>
+        <p className="mt-2 text-[12.5px] text-ink-3">{view.scenario.role}</p>
       </details>
-      <p className="mt-3 border-t border-line pt-3 text-[13px] text-ink-3">{view.scenario.role}</p>
     </section>
   )
 }

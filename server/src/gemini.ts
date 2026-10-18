@@ -8,8 +8,8 @@ import type { Config } from './config'
  * The model only organises and phrases facts the server supplies: the resident's documented baseline and the events
  * revealed in this attempt. Its output must match a JSON schema whose fact ids are restricted to the supplied ids, and
  * is then validated on the server (no unknowns presented as known, no numbers absent from the facts, no diagnosis,
- * treatment or reassurance language). Anything else — no key, a timeout, an HTTP error, invalid output, an exhausted
- * budget — returns the deterministic template draft with the reason. The simulation never depends on the model.
+ * treatment or reassurance language). Anything else (no key, a timeout, an HTTP error, invalid output, an exhausted
+ * budget) returns the deterministic template draft with the reason. The simulation never depends on the model.
  */
 
 export interface DraftResult {
@@ -34,7 +34,7 @@ Rules:
 - Do not name diagnoses or possible causes, do not give treatment or medication instructions, and do not say the resident is safe or fine.
 - Use plain, short sentences a busy nurse can scan. This draft will be reviewed and edited by the staff member; it does not replace their assessment or the facility's reporting procedures.`
 
-const section = z.object({ text: z.string().max(1200), fact_ids: z.array(z.string()).max(40) })
+const section = z.object({ text: z.string().max(2000), fact_ids: z.array(z.string()).max(40) })
 const ModelDraft = z.object({
   situation: section,
   background: section,
