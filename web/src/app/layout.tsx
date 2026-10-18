@@ -3,19 +3,21 @@ import '@fontsource-variable/source-serif-4'
 import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
 import { Shell } from '@/components/Shell'
+import { WardProvider } from '@/lib/ward'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: { default: 'THREAD · Off Day or Something More?', template: '%s · THREAD' },
-  description:
-    'An interactive long-term-care training simulation: learn a resident’s baseline, notice change, decide with what you know, communicate it, and review your reasoning. Synthetic data; not for clinical use.',
+  title: { default: 'THREAD · Catch it early, then carry it through', template: '%s · THREAD' },
+  description: 'Three workflows for long-term care: spot a change against a resident’s usual, size it up, and carry it across the shift change. Synthetic data.',
 }
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en-CA">
       <body>
-        <Shell>{children}</Shell>
+        <WardProvider>
+          <Shell>{children}</Shell>
+        </WardProvider>
       </body>
     </html>
   )

@@ -1,72 +1,74 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
 
-export const metadata: Metadata = { title: 'Why it’s built this way' }
+export const metadata: Metadata = { title: 'Why it works this way' }
 
-const PRINCIPLES: [string, string][] = [
-  ['Baseline first', 'A change only means something against the resident’s usual.'],
-  ['Two futures', 'The same Monday can resolve or persist.'],
-  ['No hindsight', 'Decisions are scored on what was known at the time.'],
-  ['Fact, assumption, unknown', 'Kept apart in every decision and handover.'],
-  ['Offered is not consumed', 'An attempt is not an outcome.'],
-  ['AI drafts, people decide', 'Gemini only phrases the handover.'],
-]
-
-const SOURCES: [string, string, string][] = [
-  ['Liu et al., Nurse Education Today, 2023', 'https://doi.org/10.1016/j.nedt.2023.105838', 'Education for recognising deterioration: practice plus debrief.'],
-  ['Kay et al., J Applied Gerontology, 2022', 'https://pmc.ncbi.nlm.nih.gov/articles/PMC9981342/', 'SBAR training in nursing homes, refined in PDSA cycles.'],
-  ['Renz et al., Geriatric Nursing, 2013', 'https://pmc.ncbi.nlm.nih.gov/articles/PMC3932321/', 'SBAR in long-term care: structure helps staff organise what they know.'],
-  ['AHRQ, Communicating Change in a Resident’s Condition', 'https://www.ahrq.gov/patient-safety/settings/long-term-care/resource/facilities/ltc/mod2concl.html', 'Noticing is not enough: tell someone, in time, without blame.'],
+const POINTS: [string, string, string, string][] = [
+  [
+    'Changes are seen first by aides',
+    'The first signs are soft (ate less, stayed in, quieter) and are noticed by PSWs and aides, the people who provide most direct care.',
+    'INTERACT’s Stop and Watch card exists for exactly this moment.',
+    'https://www.commonwealthfund.org/publications/other-publication/2010/aug/interact-ii-education-and-clinical-tools-reducing-transfers',
+  ],
+  [
+    'Against their own usual',
+    'A quarter of a breakfast only means something next to “usually eats most of it”. Readings are compared with the resident’s own ranges, not a population threshold.',
+    'In a Quebec study nurses detected delirium in 13% of residents who had it; detection depends on knowing the person.',
+    'https://pmc.ncbi.nlm.nih.gov/articles/PMC2277396',
+  ],
+  [
+    'Tools alone don’t close the loop',
+    'In a cluster trial of 85 homes, giving staff INTERACT’s tools did not reduce hospitalizations overall. Uptake was the problem, so THREAD makes the follow-through the product.',
+    'Kane et al., JAMA Internal Medicine, 2017.',
+    'https://psnet.ahrq.gov/issue/effects-intervention-reduce-hospitalizations-nursing-homes-randomized-implementation-trial',
+  ],
+  [
+    'Structured escalation',
+    'SBAR gives the nurse a structure for calling the NP. The evidence is moderate, and works best when it fits the workflow rather than being filled in afterwards.',
+    'Müller et al., BMJ Open 2018; Kay et al., J Appl Gerontol 2022.',
+    'https://bmjopen.bmj.com/content/8/8/e022202',
+  ],
+  [
+    'Offered is not consumed',
+    'A chart that says “fluids offered” records an attempt. THREAD flags repeated offers with no amount until something is measured.',
+    'In one care-home study staff fluid charts were off by about 700 mL a day.',
+    'https://ueaeprints.uea.ac.uk/50440/',
+  ],
+  [
+    'Closed only on an outcome',
+    'A concern can’t be closed because someone did something. It closes when each changed area is recorded back to usual.',
+    'Missed care is mostly care left undone between people and shifts.',
+    'https://nursingworld.org/nurses-books/errors-of-omission-how-missed-nursing-care-imperils-patients',
+  ],
 ]
 
 export default function Rationale() {
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div>
-        <p className="eyebrow">Design rationale</p>
-        <h1 className="mt-1 text-[34px]">Why it’s built this way</h1>
+        <p className="eyebrow">Why it works this way</p>
+        <h1 className="mt-1 text-[32px]">The problem is the relay</h1>
+        <p className="mt-2 max-w-[64ch] text-[15px] text-ink-2">
+          Early signs are rarely missed by everyone. They are noticed by one person and lost between people: not passed on, passed on but not checked,
+          checked but not followed up at the shift change.
+        </p>
       </div>
-
-      <ul className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-        {PRINCIPLES.map(([t, d]) => (
+      <ul className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+        {POINTS.map(([t, d, e, href]) => (
           <li key={t} className="card border-t-2 border-t-ink p-4">
             <h2 className="text-[17px]">{t}</h2>
-            <p className="mt-0.5 text-[13.5px] text-ink-2">{d}</p>
+            <p className="mt-1 text-[14px] text-ink-2">{d}</p>
+            <p className="mt-2 text-[12.5px] text-ink-3">
+              {e}{' '}
+              <a className="link" href={href} target="_blank" rel="noreferrer">
+                Source
+              </a>
+            </p>
           </li>
         ))}
       </ul>
-
-      <section aria-labelledby="sources" className="card p-5">
-        <h2 id="sources" className="text-[20px]">
-          Sources
-        </h2>
-        <ol className="mt-3 divide-y divide-line">
-          {SOURCES.map(([t, href, d]) => (
-            <li key={href} className="py-3">
-              <a href={href} className="link text-[14.5px]" target="_blank" rel="noreferrer">
-                {t}
-              </a>
-              <p className="text-[13.5px] text-ink-2">{d}</p>
-            </li>
-          ))}
-        </ol>
-        <p className="mt-2 text-[12.5px] text-ink-3">These shaped the design. They don’t validate THREAD or its score.</p>
-      </section>
-
-      <section className="card border-dashed p-5" aria-labelledby="limits">
-        <h2 id="limits" className="text-[18px]">
-          Limits
-        </h2>
-        <ul className="mt-2 grid gap-1.5 text-[13.5px] text-ink-2 sm:grid-cols-2">
-          <li>• Synthetic residents; illustrative values</li>
-          <li>• Rubric not yet clinically validated</li>
-          <li>• Needs educator review before real use</li>
-          <li>• No diagnosis, prediction or treatment advice</li>
-        </ul>
-        <Link href="/play/?scenario=evelyn" className="btn btn-primary mt-4">
-          Play a scenario
-        </Link>
-      </section>
+      <p className="text-[12.5px] text-ink-3">
+        Sources inform the design; they do not validate THREAD. Synthetic data, illustrative ranges, not clinical advice.
+      </p>
     </div>
   )
 }
