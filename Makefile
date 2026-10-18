@@ -2,7 +2,7 @@
 # Needs Node 22+. No database server or API key required: without DATABASE_URL the API uses an embedded
 # PostgreSQL (PGlite) in .data/, and without GEMINI_API_KEY handover drafts use the standard template.
 
-.PHONY: setup dev api web test typecheck lint build pages migrate seed reset e2e
+.PHONY: setup dev api web test typecheck lint build pages migrate reset e2e
 
 setup:            ## install dependencies for all workspaces
 	npm install
@@ -33,9 +33,6 @@ pages:            ## static practice-mode build, as deployed to GitHub Pages
 
 migrate:          ## apply database migrations (DATABASE_URL or the embedded database)
 	npm run migrate -w server
-
-seed:             ## migrations plus scenario seed data
-	npm run seed -w server
 
 reset:            ## delete the embedded development database
 	rm -rf .data

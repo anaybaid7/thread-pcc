@@ -1,70 +1,26 @@
-# THREAD · pitch kit
+# THREAD · 3-minute demo
 
-## One line
+**One line:** early signs aren’t missed, they’re dropped between people. THREAD carries a change from the PSW who
+notices it to a recorded outcome, across the shift change.
 
-**THREAD is a playable shift that teaches care staff to tell an off day from something more:** judge change against the
-resident's own baseline, keep facts apart from guesses and gaps, and communicate it clearly. Then see exactly why each
-decision was or wasn't a thoughtful one.
+## Workflow 1 · Spot it (PSW, 40 s)
+1. **Spot it** → *Evelyn Carter*. Each row is *her* usual: “walks to every meal with her rollator”.
+2. Mobility → **Different** → *Stayed in bed or room*. Eating → *Ate about a quarter*. Mood → *Quieter than usual*. Thinking → **Usual**. Type her words: *“I’ll stay put a bit, dear.”*
+3. **Send to Priya.** Say: *“Drinking and pain weren’t checked, so they go as **not known**, not as fine.”*
 
-## The problem (15 seconds)
+## Workflow 2 · Size it up (charge nurse, 80 s)
+1. **Size it up.** Board, top to bottom: Harold *recheck overdue*, Evelyn and Ruth *not yet seen*, Arthur *offered, nothing recorded*. Say: *“Ordered by reasons you can check. No risk score.”*
+2. Open **Evelyn**: usual vs now, her quote, *Not known yet* on pain.
+3. Check **Temperature 37.6** → “above *her* usual 36.2 to 36.8”. **Fluids 250** → “about 63% of her usual by now”.
+4. Point at **Close: back to usual** (disabled): *“You can’t close it because someone did something. Only an outcome closes it.”*
+5. **Escalate to Dr. Osei** → **Draft the SBAR** (built only from the record; Gemini or template) → **Escalate**.
 
-In long-term care, the people who notice change first are often support workers: a resident eats less, stays in bed,
-skips the music group. Each observation alone can be nothing. What matters is comparison with *her* usual, the pattern
-across shifts, and whether the change reaches someone who can assess it. That is a judgment skill, and it is hard to
-practise on real residents.
+## Workflow 3 · Carry it forward (shift change, 60 s)
+1. **Carry it forward** → **Move the clock to 15:00**.
+2. Read the top: Arthur, *fluids offered 3 times, no amount recorded*. Say: *“An offer is an attempt, not an outcome.”* Evelyn: *recheck overdue*.
+3. **Take it on** for each item until *nothing left unowned*.
 
-## Demo script (90 seconds)
-
-1. **Home (5 s).** "Off day, or something more? Evelyn eats a quarter of her breakfast. On its own, that could be
-   nothing." Click *Start with Evelyn*.
-2. **Baseline (10 s).** Point at *Her usual* and the chart: "Last week, around her usual on every line. Everything is
-   judged against this."
-3. **Reveal (15 s).** Press *Next event* a few times. "One event per click, nothing happens in the background. Observed,
-   documented, and here, dashed: *not known*. No fluids, pain or temperature recorded."
-4. **Decision (20 s).** "Which parts changed? Mobility, intake, engagement, not sleep: the night note says settled. Is
-   'she's just tired after her daughter's visit' an observation? No, an assumption. 'She's had enough to drink'?
-   Unknown." Choose *Tell Priya now*. Show the 40/40 feedback: "Judged on what you knew at 11:00."
-5. **Consequence (10 s).** Next events: Tuesday, in bed again, now needs help to walk. Second decision.
-6. **Handover (15 s).** "Gemini drafts an SBAR from only the facts I've seen. Every section cites them, and the server
-   rejects any draft with an invented number or a diagnosis." Edit a line, submit.
-7. **Debrief and replay (15 s).** Score ring, four criteria, *If you'd chosen differently*. Click *Replay: the other
-   version of the day*: "Here Evelyn recovers by lunch. Make the same 11:00 choice and you get the same score. Hindsight
-   never changes it."
-
-## Judging criteria
-
-| Criterion | Where it shows |
-|---|---|
-| **Usefulness** | Practises the exact moment the "Catch It Early" challenge is about: noticing change relative to a baseline and communicating it. Short enough for a huddle or onboarding. |
-| **Clarity** | One resident, one shift, one button to move forward. Baseline chart, a four-type timeline, a three-step decision. Every point in the score is explained. |
-| **Creativity** | Two versions of the same day, scored identically at the decision point: it teaches that outcomes don't grade decisions. "Offered isn't consumed" and "unknown isn't fine" are built into the mechanics, not added as tips. |
-| **Execution** | Deterministic engine shared by server and browser, a PostgreSQL schema with immutable attempts and replay, Vultr-ready TLS, a 503 path that never claims a save, tests, CI against real PostgreSQL, WCAG 2.1 AA, phone layout. |
-| **Use of AI** | Gemini does one bounded job: it turns facts the player has seen into an editable SBAR draft. It is grounded by schema and server validation, has a deterministic fallback, and never decides branches or scores. |
-
-## Judge Q&A
-
-**Why not let the AI run the scenario?** Because the lesson depends on fairness and repeatability: the same choice
-must lead to the same place and the same score. Events, branches and scores are code and data that a clinical
-educator can review. The model only helps with phrasing.
-
-**What stops Gemini making things up?** Its output schema only allows fact ids that were supplied. The server then
-rejects any draft that cites an unknown as known, contains a number that isn't in the facts, or names a diagnosis,
-treatment or reassurance. Rejected drafts fall back to a template, with the reason shown. Drafts are labelled
-AI-assisted and must be edited.
-
-**Is the score validated?** No. It is a transparent prototype rubric with every rule visible. The research we cite
-informed the format (prebrief, practice, debrief; SBAR; timely communication). It does not validate THREAD.
-
-**Why Vultr PostgreSQL?** Attempts are training records: what was revealed, what was decided, with what evidence,
-and how it scored. They must be durable and inspectable. Replays are new rows, and completed attempts never change.
-
-**What's next?** Review of the scenarios by long-term-care educators, a scenario authoring format they can edit,
-facilitator views of anonymised attempt patterns (for example, which unknowns people most often treat as facts), and a
-small pilot evaluation.
-
-## Honest limitations
-
-- Synthetic content only. Illustrative indices, not measurements.
-- Not reviewed by clinicians yet. Needs expert review and formal evaluation before use with staff.
-- Not tested against a live Vultr cluster or a live Gemini key during the build. Both are configured through
-  environment variables, with documented setup and explicit fallbacks.
+## If asked
+- **Why not AI prediction?** The bottleneck is the hand-off, not the detection. INTERACT’s randomized trial (85 homes) found that giving staff the tools didn’t reduce hospitalizations; uptake did. So THREAD makes the follow-through the product.
+- **Why the resident’s own ranges?** A Quebec study found nurses detected delirium in 13% of residents who had it. Detection depends on knowing the person.
+- **Where’s the data?** PostgreSQL on Vultr. An append-only command log per ward, replayed, so every screen is reproducible.

@@ -1,23 +1,7 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, type Page } from '@playwright/test'
 
-export type Answers = { changed: string[]; sort: Record<string, string>; choice: RegExp }
-
-/** The answers a careful player gives for Evelyn's two decisions (persisting course). */
-export const EVELYN: Record<'d1' | 'd2', Answers> = {
-  d1: {
-    changed: ['Mobility', 'Meal intake', 'Engagement'],
-    sort: { 'ate about a quarter': 'Observed', 'asked for a tray': 'Observed', 'just tired after Joan': 'Assumption', 'enough to drink today': 'Unknown', 'isn’t in any pain': 'Unknown' },
-    choice: /Tell Priya, the charge nurse, now/,
-  },
-  d2: {
-    changed: ['Still changed, and now affecting her walking too'],
-    sort: { 'needed help to walk': 'Observed', 'much less than usual for two days': 'Observed', 'She’s dehydrated': 'Assumption', 'drank enough overnight': 'Unknown', 'age catching up': 'Assumption' },
-    choice: /Give Priya a structured handover now/,
-  },
-}
-
-/** WCAG 2.1 AA on the settled page: motion is paused first so text isn't measured mid-fade. */
+/** WCAG 2.1 AA on the settled page (motion paused so nothing is measured mid-fade). */
 export async function noA11yViolations(page: Page, label: string) {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.waitForTimeout(100)
@@ -26,33 +10,48 @@ export async function noA11yViolations(page: Page, label: string) {
   expect(r.violations.map((v) => `${label}: ${v.id} ${v.nodes.map((n) => n.target.join(' ')).join(' | ')}`)).toEqual([])
 }
 
-const esc = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+const go = async (page: Page, name: RegExp) => {
+  await page.getByRole('navigation', { name: 'Workflows' }).getByRole('link', { name }).click()
+}
 
-export async function drawUntilStop(page: Page) {
-  for (let i = 0; i < 40; i++) {
-    if ((await page.locator('#decision-title').count()) || (await page.locator('#handover-title').count())) return
-    const next = page.getByRole('button', { name: /^Next entry/ })
-    // The button disappears when a decision arrives, so never wait on it indefinitely.
-    if ((await next.count()) && (await next.isEnabled({ timeout: 500 }).catch(() => false))) await next.click({ timeout: 2000 }).catch(() => {})
-    else await page.waitForTimeout(100)
+/** Workflow 1: Maya checks Evelyn against her usual and sends the changes to the nurse. */
+export async function spotIt(page: Page) {
+  await go(page, /Spot it/)
+  await page.getByRole('button', { name: /Evelyn Carter/ }).click()
+  const mark = async (area: string, status: string, finding?: string) => {
+    await page.getByRole('group', { name: area }).getByRole('button', { name: status }).click()
+    if (finding) await page.getByRole('button', { name: finding, exact: true }).click()
   }
-  throw new Error('No decision or handover appeared')
+  await mark('Mobility', 'Different', 'Stayed in bed or room')
+  await mark('Eating', 'Different', 'Ate about a quarter')
+  await mark('Mood and engagement', 'Different', 'Quieter than usual')
+  await mark('Thinking', 'Usual')
+  await page.getByRole('button', { name: 'Send to Priya' }).click()
+  await expect(page.getByText(/Sent to Priya at/)).toBeVisible()
 }
 
-export async function decide(page: Page, d: Answers) {
-  await expect(page.locator('#decision-title')).toBeVisible()
-  for (const n of d.changed) await page.getByLabel(n, { exact: true }).check()
-  await page.getByRole('button', { name: 'Continue' }).click()
-  for (const [text, tag] of Object.entries(d.sort)) await page.getByRole('radio', { name: new RegExp(`${esc(text)}.*: ${tag}$`) }).check()
-  await page.getByRole('button', { name: 'Continue' }).click()
-  await page.getByLabel(d.choice).check()
-  await page.getByRole('button', { name: 'Submit decision' }).click()
-  await expect(page.locator('#feedback-title')).toBeVisible()
+/** Workflow 2: Priya opens Evelyn, checks something not yet known, and starts a watch with a recheck. */
+export async function sizeItUp(page: Page) {
+  await go(page, /Size it up/)
+  await page.getByRole('button', { name: /Evelyn Carter/ }).click()
+  await expect(page.getByText('Needs a recorded outcome for mobility, eating, mood')).toBeVisible()
+  await page.getByLabel('Check').selectOption('temp')
+  await page.getByLabel(/Value/).fill('37.6')
+  await expect(page.getByText(/Outside usual: 37.6 °C, above her usual/)).toBeVisible()
+  await page.getByRole('button', { name: 'Record', exact: true }).click()
+  await page.getByRole('button', { name: /^Watch Evelyn, recheck at/ }).click()
+  await expect(page.getByText(/^Watching$/).first()).toBeVisible()
 }
 
-export async function handOver(page: Page) {
-  await expect(page.locator('#handover-title')).toBeVisible()
-  await page.getByRole('button', { name: /Draft (with Gemini|from the template)/ }).click()
-  await page.getByRole('button', { name: /Submit handover/ }).click()
-  await expect(page.locator('#debrief-title')).toBeVisible()
+/** Workflow 3: Daniel moves to the 15:00 shift change and takes on every item. */
+export async function carryForward(page: Page) {
+  await go(page, /Carry it forward/)
+  await page.getByRole('button', { name: /Move the clock to 15:00/ }).click()
+  await expect(page.getByText('Fluids offered 3 times, no amount recorded')).toBeVisible()
+  const take = page.getByRole('button', { name: 'Take it on' })
+  for (let n = await take.count(); n > 0; n--) {
+    await take.first().click()
+    await expect(take).toHaveCount(n - 1)
+  }
+  await expect(page.getByText(/nothing left unowned/)).toBeVisible()
 }
