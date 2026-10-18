@@ -119,7 +119,7 @@ export function DebriefPanel({
 
       <div className="card p-5 sm:p-6">
         <div className="grid gap-6 md:grid-cols-2">
-          <List title={`What changed from ${name}’s baseline`} items={debrief.deviations} empty="No changes below her usual were revealed in this run." />
+          <List title={`What changed from ${name}’s baseline`} items={debrief.deviations} empty="No changes below their usual were revealed in this run." />
           <List title="What wasn’t known" items={debrief.missing} empty="Nothing was flagged as unknown." tone="mid" />
           <List
             title="Where an assumption was treated as a fact"

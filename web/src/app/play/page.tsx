@@ -27,7 +27,7 @@ function Loading() {
 }
 
 const STAGES: { key: AttemptView['stage']; label: string }[] = [
-  { key: 'A', label: 'Her baseline' },
+  { key: 'A', label: 'Baseline' },
   { key: 'B', label: 'The first off day' },
   { key: 'C', label: 'What happens next' },
   { key: 'handover', label: 'Handover' },
@@ -82,7 +82,7 @@ function Prebrief({ view, busy, onStart }: { view: AttemptView; busy: boolean; o
       </h2>
       <ol className="mt-3 grid gap-2 text-[14.5px] sm:grid-cols-2">
         {[
-          ['Learn her baseline', `Read ${name}’s usual pattern on the left and in the chart. Every change is judged against it.`],
+          ['Learn the baseline', `Read ${name}’s usual pattern on the left and in the chart. Every change is judged against it.`],
           ['Reveal events one at a time', 'Press “Next event”. Nothing happens until you do: no timers, no surprises in the background.'],
           ['Decide with what you know', 'At each decision point: what changed, what’s fact, assumption or unknown, and what you do.'],
           ['Hand over, then debrief', 'Write a short SBAR handover, then see your reasoning scored and replay the other version of the day.'],
@@ -132,7 +132,7 @@ function ObservePanel({ view }: { view: AttemptView }) {
         Notice, compare, don’t conclude yet
       </h2>
       <ul className="mt-2 space-y-1.5 text-[14px] text-ink-2">
-        <li>• Compare each event with {name}’s usual: is it different for <i>her</i>?</li>
+        <li>• Compare each event with {name}’s usual: is it different for <i>{view.scenario.resident.pronoun === 'he' ? 'him' : view.scenario.resident.pronoun === 'she' ? 'her' : 'them'}</i>?</li>
         <li>• Keep what was <b>observed</b> apart from what someone <b>assumes</b>, and from what <b>nobody knows</b>.</li>
         <li>• One unusual observation can be ambiguous. Watch for a pattern across areas and across time.</li>
       </ul>

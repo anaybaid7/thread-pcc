@@ -1,10 +1,14 @@
-import type { AttemptView, Dimension } from '@thread/engine'
+import { possessive, type AttemptView, type Dimension } from '@thread/engine'
 
 export const DIM_COLOR: Record<string, string> = {
   mobility: 'var(--color-mobility)',
   intake: 'var(--color-intake)',
   engagement: 'var(--color-engagement)',
+  orientation: 'var(--color-orientation)',
+  fluids: 'var(--color-fluids)',
 }
+
+export const HAS_ICON = new Set(['mobility', 'intake', 'engagement', 'orientation', 'fluids'])
 
 export function DimIcon({ dim, size = 18 }: { dim: Dimension | string; size?: number }) {
   const c = DIM_COLOR[dim] ?? 'var(--color-ink-3)'
@@ -24,6 +28,18 @@ export function DimIcon({ dim, size = 18 }: { dim: Dimension | string; size?: nu
         <>
           <path d="M3 10h14a7 6 0 0 1-14 0z" {...common} />
           <path d="M13 3l-3 7" {...common} />
+        </>
+      ) : dim === 'orientation' ? (
+        // calendar
+        <>
+          <rect x="3.5" y="4.5" width="13" height="12" rx="1.5" {...common} />
+          <path d="M3.5 8.5h13M7 3v3M13 3v3M7.5 12.5l2 1.8 3-3.6" {...common} />
+        </>
+      ) : dim === 'fluids' ? (
+        // cup
+        <>
+          <path d="M5 5h10l-1.2 11H6.2z" {...common} />
+          <path d="M5.6 9.5h8.8" {...common} />
         </>
       ) : (
         // speech
@@ -65,7 +81,7 @@ export function ResidentCard({ view }: { view: AttemptView }) {
       </div>
       <p className="mt-3 text-[14px] text-ink-2">{r.summary}</p>
 
-      <h3 className="eyebrow mt-4 font-sans">Her usual</h3>
+      <h3 className="eyebrow mt-4 font-sans">{possessive(r.pronoun)} usual</h3>
       <ul className="mt-2 space-y-2">
         {r.baseline.map((b) => (
           <li key={b.id} className="flex gap-2.5 text-[14px]">

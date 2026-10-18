@@ -8,8 +8,8 @@ import { KIND } from './EventTimeline'
 type SectionKey = 'situation' | 'background' | 'assessment' | 'recommendation'
 
 const SECTIONS: { key: SectionKey; letter: string; title: string; hint: string; allowUnknown: boolean }[] = [
-  { key: 'situation', letter: 'S', title: 'Situation', hint: 'What is happening now, compared with her usual?', allowUnknown: false },
-  { key: 'background', letter: 'B', title: 'Background', hint: 'What is usual for her? What relevant context is documented?', allowUnknown: false },
+  { key: 'situation', letter: 'S', title: 'Situation', hint: 'What is happening now, compared with their usual?', allowUnknown: false },
+  { key: 'background', letter: 'B', title: 'Background', hint: 'What is usual for this resident? What relevant context is documented?', allowUnknown: false },
   { key: 'assessment', letter: 'A', title: 'Assessment: what was observed', hint: 'What was actually seen, with day and time. Offered is not the same as consumed.', allowUnknown: false },
   { key: 'recommendation', letter: 'R', title: 'Recommendation / request', hint: 'What are you asking for? An assessment, what to record, who to tell. Not a diagnosis or treatment.', allowUnknown: true },
 ]
@@ -23,7 +23,7 @@ const EMPTY: HandoverDraft = {
 }
 
 const GROUPS: { title: string; match: (f: Fact) => boolean }[] = [
-  { title: 'Her usual', match: (f) => f.kind === 'baseline' },
+  { title: 'Their usual', match: (f) => f.kind === 'baseline' },
   { title: 'What happened', match: (f) => f.kind !== 'baseline' && f.kind !== 'unknown' },
   { title: 'Not known', match: (f) => f.kind === 'unknown' },
 ]

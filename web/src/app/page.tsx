@@ -34,7 +34,7 @@ function ForkVisual() {
 const LOOP = ['Learn her baseline', 'Observe a change', 'Inspect the evidence', 'Decide', 'See what happens', 'Debrief', 'Replay']
 
 const RUBRIC = [
-  ['Recognising change from baseline', 30, 'What differs from her usual, and how it develops'],
+  ['Recognising change from baseline', 30, 'What differs from their usual, and how it develops'],
   ['Communication and action', 30, 'The right people hear it, in time, as observations'],
   ['Facts, assumptions and unknowns', 25, 'What was seen, kept apart from guesses and gaps'],
   ['Handover clarity', 15, 'Situation, background, timed observations, a clear request, unknowns'],

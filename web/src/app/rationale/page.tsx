@@ -101,7 +101,7 @@ export default function Rationale() {
           Limitations
         </h2>
         <ul className="mt-3 list-disc space-y-1.5 pl-5 text-[14.5px] text-ink-2">
-          <li>All residents, staff, events and values are synthetic. Chart values are illustrative indices (100 = her usual), not clinical measurements or thresholds.</li>
+          <li>All residents, staff, events and values are synthetic. Chart values are illustrative indices (100 = the resident’s usual), not clinical measurements or thresholds.</li>
           <li>The rubric and its point values are a transparent prototype, written by the team, not a validated assessment instrument.</li>
           <li>Scenario content has not been reviewed by long-term-care clinicians or educators. It should be before any use with staff.</li>
           <li>THREAD does not diagnose, predict deterioration or hospitalisation, recommend treatment, or replace staff assessment or facility procedures.</li>

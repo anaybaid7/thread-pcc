@@ -67,8 +67,8 @@ describe('schema', () => {
         `select (select count(*)::int from scenario_versions) v, (select count(*)::int from resident_profiles) p, (select count(*)::int from scenario_events) e`,
       )
     ).rows[0]!
-    expect(counts.v).toBe(1)
-    expect(counts.p).toBe(1)
+    expect(counts.v).toBe(3)
+    expect(counts.p).toBe(3)
     expect(counts.e).toBeGreaterThan(20)
   })
 

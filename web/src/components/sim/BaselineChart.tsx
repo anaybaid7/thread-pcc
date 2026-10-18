@@ -1,6 +1,6 @@
 'use client'
 
-import type { AttemptView, ChartPoint } from '@thread/engine'
+import { possessive, type AttemptView, type ChartPoint } from '@thread/engine'
 import {
   CartesianGrid,
   Legend,
@@ -18,13 +18,13 @@ import { DIM_COLOR, DimIcon } from './ResidentCard'
 
 type Row = { label: string; phase: ChartPoint['phase']; notes: ChartPoint['notes'] } & Record<string, number | string | undefined | object>
 
-function TipBox({ active, payload, label }: Partial<TooltipContentProps<number, string>>) {
+function TipBox({ active, payload, label, their }: Partial<TooltipContentProps<number, string>> & { their: string }) {
   if (!active || !payload?.length) return null
   const row = payload[0]!.payload as Row
   return (
     <div className="max-w-[280px] rounded-lg border border-line bg-surface p-3 text-[13px] shadow-lg">
       <p className="font-semibold">
-        {label} <span className="font-normal text-ink-3">· {row.phase === 'usual' ? 'last week (her usual)' : 'this shift'}</span>
+        {label} <span className="font-normal text-ink-3">· {row.phase === 'usual' ? `last week (${their} usual)` : 'this shift'}</span>
       </p>
       <ul className="mt-1.5 space-y-1">
         {payload.map((p) => (
@@ -48,6 +48,7 @@ export function BaselineChart({ view }: { view: AttemptView }) {
   const observed = view.chart.filter((p) => p.phase === 'observed')
   const name = view.scenario.resident.preferredName
   const latest = observed[observed.length - 1]
+  const their = possessive(view.scenario.resident.pronoun)
 
   return (
     <section className="card p-4 sm:p-5" aria-labelledby="chart-title">
@@ -55,7 +56,7 @@ export function BaselineChart({ view }: { view: AttemptView }) {
         <h2 id="chart-title" className="text-[19px]">
           {name}’s usual vs. what’s been seen
         </h2>
-        <p className="text-[12.5px] text-ink-3">Illustrative index · 100 = her usual · not a clinical measure</p>
+        <p className="text-[12.5px] text-ink-3">Illustrative index · 100 = {their} usual · not a clinical measure</p>
       </div>
 
       {/* oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- the chart's text alternative; values are also in the timeline */}
@@ -78,7 +79,7 @@ export function BaselineChart({ view }: { view: AttemptView }) {
             )}
             <XAxis dataKey="label" tick={{ fontSize: 11.5, fill: 'var(--color-ink-3)' }} tickLine={false} axisLine={{ stroke: 'var(--color-line-strong)' }} interval="preserveStartEnd" minTickGap={6} />
             <YAxis domain={[0, 120]} ticks={[0, 50, 100]} tick={{ fontSize: 11.5, fill: 'var(--color-ink-3)' }} tickLine={false} axisLine={false} />
-            <Tooltip content={<TipBox />} />
+            <Tooltip content={<TipBox their={their} />} />
             <Legend
               verticalAlign="top"
               height={28}
@@ -130,7 +131,7 @@ export function BaselineChart({ view }: { view: AttemptView }) {
                 <span className="text-ink-3">Usually: {d.usual.toLowerCase()}</span>
                 {tone && (
                   <span className="mt-0.5 block font-medium" style={{ color: `var(--color-${tone})` }}>
-                    {tone === 'good' ? 'Within her usual' : tone === 'mid' ? 'Below her usual' : 'Well below her usual'} ({latest!.label})
+                    {tone === 'good' ? `Within ${their} usual` : tone === 'mid' ? `Below ${their} usual` : `Well below ${their} usual`} ({latest!.label})
                   </span>
                 )}
               </span>
@@ -144,8 +145,8 @@ export function BaselineChart({ view }: { view: AttemptView }) {
 
 function chartSummary(view: AttemptView) {
   const obs = view.chart.filter((p) => p.phase === 'observed')
-  if (!obs.length) return `Last week, ${view.scenario.resident.preferredName}'s mobility, meal intake and engagement were all around her usual.`
-  return `Last week around her usual. Since: ${obs
+  if (!obs.length) return `Last week, ${view.scenario.resident.preferredName} was around ${possessive(view.scenario.resident.pronoun)} usual on every measure.`
+  return `Last week around ${possessive(view.scenario.resident.pronoun)} usual. Since: ${obs
     .map((p) => `${p.label}: ${Object.entries(p.values).map(([k, v]) => `${k} ${v}`).join(', ')}`)
     .join('; ')}.`
 }

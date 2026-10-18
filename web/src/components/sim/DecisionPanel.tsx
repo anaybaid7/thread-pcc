@@ -2,7 +2,7 @@
 
 import type { DecisionFeedback, DecisionInput, PublicDecision, Tag } from '@thread/engine'
 import { useState } from 'react'
-import { DimIcon } from './ResidentCard'
+import { DimIcon, HAS_ICON } from './ResidentCard'
 
 const TAGS: { id: Tag; label: string; hint: string }[] = [
   { id: 'observed', label: 'Observed', hint: 'Someone saw, heard or recorded it' },
@@ -79,7 +79,7 @@ export function DecisionPanel({
                   onClick={() => toggle(o.id)}
                   className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-[14px] font-medium transition-colors ${on ? 'border-accent bg-accent-soft text-accent-strong' : 'border-line-strong hover:bg-sunken'}`}
                 >
-                  {r.kind === 'dimensions' && ['mobility', 'intake', 'engagement'].includes(o.id) && <DimIcon dim={o.id} size={16} />}
+                  {r.kind === 'dimensions' && HAS_ICON.has(o.id) && <DimIcon dim={o.id} size={16} />}
                   {o.label}
                 </button>
               )
