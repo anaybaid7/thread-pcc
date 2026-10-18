@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { apply, applyAll, board, deriveConcerns, handover, offerFlags, sbarFacts, seedWard, START, t, templateSbar, WardError, type Command, type Ward } from '../src'
+import { apply, applyAll, board, deriveConcerns, handover, offerFlags, relay, sbarFacts, seedWard, START, t, templateSbar, WardError, type Command, type Ward } from '../src'
 
 const evelynCheckin: Command = {
   type: 'checkin',
@@ -142,5 +142,40 @@ describe('workflow 3: carry it forward', () => {
     const item = handover(w).items.find((i) => i.residentId === 'evelyn')!
     expect(item.group).toBe('closed')
     expect(item.done[0]).toMatch(/recorded outcome/)
+  })
+})
+
+describe('the relay', () => {
+  const lane = (w: Ward, rid: string) => relay(w).find((l) => l.residentId === rid)!
+  const states = (w: Ward, rid: string) => lane(w, rid).stages.map((s) => s.state)
+
+  it('shows where each concern is held at the start', () => {
+    const w = seedWard()
+    expect(relay(w).map((l) => [l.residentId, l.stuck?.stage ?? null])).toEqual([
+      ['arthur', 'noticed'],
+      ['ruth', 'seen'],
+      ['harold', 'plan'],
+      ['margaret', null],
+    ])
+    expect(states(w, 'harold')).toEqual(['done', 'done', 'stuck', 'missed', 'later'])
+    expect(lane(w, 'harold').stages[3]!.text).toBe('2 shift changes, no sign-off')
+    expect(lane(w, 'ruth').stuck!.text).toBe('Waiting 65 min')
+  })
+
+  it('moves the baton as the three workflows happen', () => {
+    let w = applyAll(seedWard(), [evelynCheckin])
+    expect(states(w, 'evelyn')).toEqual(['done', 'stuck', 'later', 'later', 'later'])
+    const id = concernOf(w, 'evelyn').id
+    w = applyAll(w, [
+      { type: 'measure', by: 'priya', residentId: 'evelyn', kind: 'temp', value: 37.6 },
+      { type: 'plan', by: 'priya', concernId: id, decision: 'escalate', to: 'osei', recheckIn: 120, recheck: ['mobility'] },
+    ])
+    expect(states(w, 'evelyn')).toEqual(['done', 'done', 'done', 'later', 'later'])
+    expect(lane(w, 'evelyn').stages[1]!.text).toBe('Priya, after 2 min')
+    w = apply(w, { type: 'advance', to: t('Tue', '15:00') })
+    expect(lane(w, 'evelyn').stuck).toMatchObject({ stage: 'plan' })
+    expect(lane(w, 'evelyn').stages[3]!.state).toBe('stuck')
+    w = apply(w, { type: 'ack', by: 'daniel', key: id })
+    expect(lane(w, 'evelyn').stages[3]).toMatchObject({ state: 'done', by: 'daniel' })
   })
 })

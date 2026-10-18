@@ -463,3 +463,106 @@ export function templateSbar(w: Ward, concernId: string): Sbar {
     source: 'template',
   }
 }
+
+// ── The relay: where each concern is between the person who noticed and a recorded outcome ──
+
+export type StageKey = 'noticed' | 'seen' | 'plan' | 'handover' | 'closed'
+export const STAGES: { key: StageKey; label: string }[] = [
+  { key: 'noticed', label: 'Noticed' },
+  { key: 'seen', label: 'Seen by a nurse' },
+  { key: 'plan', label: 'Plan' },
+  { key: 'handover', label: 'Handed over' },
+  { key: 'closed', label: 'Closed on outcome' },
+]
+
+export interface Stage {
+  key: StageKey
+  /** done: happened. stuck: the baton is held here. missed: a step that should have happened and didn't. later: not reached. */
+  state: 'done' | 'stuck' | 'missed' | 'later'
+  at: number | null
+  by: string | null
+  text: string
+}
+
+export interface Lane {
+  key: string
+  residentId: string
+  concernId: string | null
+  stages: Stage[]
+  /** Where the baton is held, in words, and since when. Null when it is moving or closed. */
+  stuck: { stage: StageKey; text: string; since: number } | null
+  closed: boolean
+}
+
+const NURSES = new Set(STAFF.filter((s) => s.role === 'RPN' || s.role === 'NP').map((s) => s.id))
+const mins = (n: number) => (n < 90 ? `${n} min` : `${Math.floor(n / 60)} h ${String(n % 60).padStart(2, '0')}`)
+
+/** Shift changes strictly after `from` and no later than `to`. */
+function changesBetween(from: number, to: number) {
+  const out: number[] = []
+  for (let d = Math.floor(from / 1440) * 1440; d <= to; d += 1440) for (const h of SHIFT_CHANGES) if (d + h > from && d + h <= to) out.push(d + h)
+  return out
+}
+
+export function relay(w: Ward): Lane[] {
+  const concerns = deriveConcerns(w)
+  const h = handover(w)
+  const acks = w.events.filter((e): e is Extract<Event, { type: 'ack' }> => e.type === 'ack')
+  const lanes: Lane[] = []
+  const handoverStage = (key: string, opened: number, until: number): Stage => {
+    const a = acks.filter((x) => x.key === key).pop()
+    if (a) return { key: 'handover', state: 'done', at: a.at, by: a.by, text: `Taken on by ${staffName(a.by)}` }
+    const onSheet = h.open && h.items.some((i) => i.key === key)
+    if (onSheet) return { key: 'handover', state: 'stuck', at: null, by: null, text: `On the ${clock(h.at)} handover, not taken on` }
+    const crossed = changesBetween(opened, until).filter((c) => !(h.open && c === h.at))
+    if (crossed.length) return { key: 'handover', state: 'missed', at: null, by: null, text: `${crossed.length} shift change${crossed.length === 1 ? '' : 's'}, no sign-off` }
+    return { key: 'handover', state: 'later', at: null, by: null, text: `Next ${clock(nextHandover(w.now))}` }
+  }
+
+  for (const c of concerns) {
+    if (c.status === 'resolved' && w.now - c.resolution!.at >= 1440) continue
+    const plan = c.plans[c.plans.length - 1]
+    const firstNurse = [...c.checks, ...c.followups.filter((f) => NURSES.has(f.by)), ...c.plans].filter((x) => NURSES.has(x.by)).sort((a, b) => a.at - b.at)[0]
+    const noticed: Stage = { key: 'noticed', state: 'done', at: c.openedAt, by: c.openedBy, text: c.changed.length ? c.changed.map((x) => x.finding).join(', ') : (c.reason ?? 'Concern opened') }
+    const seen: Stage = firstNurse
+      ? { key: 'seen', state: 'done', at: firstNurse.at, by: firstNurse.by, text: `${staffName(firstNurse.by)}, after ${mins(firstNurse.at - c.openedAt)}` }
+      : { key: 'seen', state: 'stuck', at: null, by: null, text: `Waiting ${mins(w.now - c.openedAt)}` }
+    const planStage: Stage = !plan
+      ? { key: 'plan', state: 'later', at: null, by: null, text: firstNurse ? 'Needs a decision' : '' }
+      : c.overdue
+        ? { key: 'plan', state: 'stuck', at: plan.at, by: plan.by, text: `Recheck overdue ${mins(w.now - plan.recheckAt)}` }
+        : { key: 'plan', state: 'done', at: plan.at, by: plan.by, text: plan.decision === 'escalate' ? `Escalated to ${staffName(plan.to ?? '')}` : `Watching, recheck ${clock(plan.recheckAt)}` }
+    const closed: Stage = c.resolution
+      ? { key: 'closed', state: 'done', at: c.resolution.at, by: c.resolution.by, text: 'Back to usual' }
+      : { key: 'closed', state: 'later', at: null, by: null, text: c.closable.missing.length ? `Needs outcome: ${c.closable.missing.map((a) => AREAS[a].label.toLowerCase()).join(', ')}` : '' }
+    const stages = [noticed, seen, planStage, handoverStage(c.id, c.openedAt, c.resolution?.at ?? w.now), closed]
+    const s = stages.find((x) => x.state === 'stuck')
+    lanes.push({
+      key: c.id,
+      residentId: c.residentId,
+      concernId: c.id,
+      stages,
+      stuck: s ? { stage: s.key, text: s.text, since: s.key === 'seen' ? c.openedAt : s.key === 'plan' ? plan!.recheckAt : h.at - HANDOVER_BEFORE } : null,
+      closed: !!c.resolution,
+    })
+  }
+  for (const f of offerFlags(w, concerns)) {
+    const key = `offers:${f.residentId}`
+    const later = (k: StageKey): Stage => ({ key: k, state: 'later', at: null, by: null, text: '' })
+    lanes.push({
+      key,
+      residentId: f.residentId,
+      concernId: null,
+      stages: [
+        { key: 'noticed', state: 'stuck', at: f.first, by: null, text: `Fluids offered ${f.count} times, never measured` },
+        later('seen'),
+        later('plan'),
+        handoverStage(key, f.first, w.now),
+        later('closed'),
+      ],
+      stuck: { stage: 'noticed', text: `Offered ${f.count} times, nothing measured`, since: f.first },
+      closed: false,
+    })
+  }
+  return lanes.sort((a, b) => Number(a.closed) - Number(b.closed) || (a.stuck ? a.stuck.since : Infinity) - (b.stuck ? b.stuck.since : Infinity) || a.residentId.localeCompare(b.residentId))
+}
