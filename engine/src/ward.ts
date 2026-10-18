@@ -93,7 +93,8 @@ export function apply(w: Ward, cmd: Command): Ward {
           area,
           usual: f.status === 'usual',
           finding: f.status === 'usual' ? 'As usual' : f.finding!.trim().slice(0, 160),
-          ...(f.status === 'different' && cmd.quote?.trim() ? { quote: cmd.quote.trim().slice(0, 200) } : {}),
+          // The resident's words belong to the report once, not to every area.
+          ...(f.status === 'different' && !observed.length && cmd.quote?.trim() ? { quote: cmd.quote.trim().slice(0, 200) } : {}),
         }
         push(e)
         if (f.status === 'different') observed.push(e.id)
