@@ -7,7 +7,7 @@ import { AreaIcon, DayStrip, Guide, Panel, StatusPill } from '@/components/ui'
 import { useWard, type SbarResult } from '@/lib/ward'
 
 const ME = 'priya'
-const TONE = { urgent: 'border-l-poor', attention: 'border-l-mid', routine: 'border-l-accent', done: 'border-l-good' }
+const TONE = { urgent: 'bg-poor', attention: 'bg-mid', routine: 'bg-accent', done: 'bg-good' }
 
 function Checks({ concern }: { concern: Concern }) {
   const { ward, send, busy } = useWard()
@@ -26,7 +26,7 @@ function Checks({ concern }: { concern: Concern }) {
       <div className="flex flex-wrap items-end gap-2">
         <label className="text-[12.5px] font-semibold">
           Check
-          <select className="field mt-1 w-[220px] py-1.5" value={kind} onChange={(e) => (setKind(e.target.value as MeasureKind), setValue(''))}>
+          <select data-demo="check-kind" className="field mt-1 w-[230px]" value={kind} onChange={(e) => (setKind(e.target.value as MeasureKind), setValue(''))}>
             {(Object.keys(MEASURES) as MeasureKind[]).map((k) => (
               <option key={k} value={k}>
                 {MEASURES[k].label}
@@ -35,10 +35,10 @@ function Checks({ concern }: { concern: Concern }) {
           </select>
         </label>
         {m.choices ? (
-          <fieldset className="flex rounded-lg border border-line-strong p-0.5 text-[13px]">
+          <fieldset className="seg">
             <legend className="sr-only">{m.label}</legend>
             {m.choices.map((c) => (
-              <button key={c} type="button" aria-pressed={value === c} onClick={() => setValue(c)} className={`rounded-md px-2.5 py-1 ${value === c ? 'bg-ink text-white' : 'text-ink-2'}`}>
+              <button key={c} type="button" aria-pressed={value === c} onClick={() => setValue(c)}>
                 {c}
               </button>
             ))}
@@ -46,10 +46,10 @@ function Checks({ concern }: { concern: Concern }) {
         ) : (
           <label className="text-[12.5px] font-semibold">
             Value {m.unit && <span className="font-normal text-ink-3">({m.unit})</span>}
-            <input className="field mt-1 w-[120px] py-1.5 font-mono" inputMode="decimal" value={value} onChange={(e) => setValue(e.target.value)} />
+            <input data-demo="check-value" className="field mt-1 w-[110px] font-mono" inputMode="decimal" value={value} onChange={(e) => setValue(e.target.value)} />
           </label>
         )}
-        <button type="button" className="btn btn-primary" disabled={!preview || busy} onClick={() => void record()}>
+        <button type="button" data-demo="record" className="btn btn-primary" disabled={!preview || busy} onClick={() => void record()}>
           Record
         </button>
       </div>
@@ -88,10 +88,10 @@ function Decide({ concern }: { concern: Concern }) {
 
   return (
     <div className="space-y-3">
-      <fieldset className="flex w-fit rounded-lg border border-line-strong p-0.5 text-[13.5px] font-medium">
+      <fieldset className="seg">
         <legend className="sr-only">Decision</legend>
         {(['watch', 'escalate'] as const).map((d) => (
-          <button key={d} type="button" aria-pressed={mode === d} onClick={() => setMode(d)} className={`rounded-md px-3 py-1 ${mode === d ? 'bg-ink text-white' : 'text-ink-2'}`}>
+          <button key={d} type="button" data-demo={`decide-${d}`} aria-pressed={mode === d} onClick={() => setMode(d)}>
             {d === 'watch' ? 'Watch with a recheck' : `Escalate to ${staffName('osei')}`}
           </button>
         ))}
@@ -99,7 +99,7 @@ function Decide({ concern }: { concern: Concern }) {
       <div className="flex flex-wrap items-center gap-2 text-[13px]">
         <span className="font-semibold">Recheck in</span>
         {[60, 120, 240].map((m) => (
-          <button key={m} type="button" aria-pressed={inMin === m} onClick={() => setIn(m)} className={`rounded-full border px-3 py-1 ${inMin === m ? 'border-ink bg-ink text-white' : 'border-line-strong'}`}>
+          <button key={m} type="button" aria-pressed={inMin === m} onClick={() => setIn(m)} className={`rounded-sm border px-2.5 py-0.5 font-mono ${inMin === m ? 'border-ink bg-ink text-white' : 'border-line-strong'}`}>
             {m / 60}h
           </button>
         ))}
@@ -110,28 +110,28 @@ function Decide({ concern }: { concern: Concern }) {
             type="button"
             aria-pressed={what.includes(a)}
             onClick={() => setWhat((w) => (w.includes(a) ? w.filter((x) => x !== a) : [...w, a]))}
-            className={`rounded-full border px-3 py-1 ${what.includes(a) ? 'border-ink bg-sunken' : 'border-line text-ink-3'}`}
+            className={`rounded-sm border px-2.5 py-0.5 ${what.includes(a) ? 'border-ink text-ink' : 'border-line text-ink-3 line-through'}`}
           >
             {AREAS[a].label.toLowerCase()}
           </button>
         ))}
       </div>
       {mode === 'escalate' && (
-        <div className="space-y-2 rounded-lg border border-line p-3">
+        <div data-demo={draft ? 'sbar' : undefined} className="space-y-2 border border-line bg-sunken/40 p-3">
           {!draft ? (
-            <button type="button" className="btn" onClick={() => void getDraft()} disabled={drafting}>
+            <button type="button" data-demo="draft" className="btn" onClick={() => void getDraft()} disabled={drafting}>
               {drafting ? (health?.gemini.configured ? 'Gemini is drafting from the record…' : 'Drafting…') : 'Draft the SBAR'}
             </button>
           ) : (
             <>
-              <p className="text-[12.5px] text-ink-3">
+              <p className={`text-[12.5px] ${meta?.source === 'gemini' ? 'font-medium text-accent-strong' : 'text-ink-3'}`}>
                 {meta?.source === 'gemini' ? `AI-assisted draft (${meta.model}), built only from the record. Check every line.` : `Template draft. ${meta?.fallbackReason ?? ''}`}
               </p>
               {(['situation', 'background', 'assessment', 'recommendation'] as const).map((k) => (
-                <label key={k} className="block text-[12.5px] font-semibold capitalize">
+                <label key={k} className="block text-[12px] font-semibold tracking-wide text-ink-3 uppercase">
                   {k}
                   <textarea
-                    className="field mt-1 min-h-[52px] font-normal"
+                    className="field mt-1 min-h-[52px] text-[14px] font-normal tracking-normal text-ink normal-case"
                     style={{ fieldSizing: 'content' } as React.CSSProperties}
                     value={draft[k]}
                     onChange={(e) => setDraft({ ...draft, [k]: e.target.value, source: 'edited' })}
@@ -142,7 +142,7 @@ function Decide({ concern }: { concern: Concern }) {
           )}
         </div>
       )}
-      <button type="button" className="btn btn-primary" disabled={busy || (mode === 'escalate' && !draft)} onClick={submit}>
+      <button type="button" data-demo="submit-plan" className="btn btn-primary" disabled={busy || (mode === 'escalate' && !draft)} onClick={submit}>
         {mode === 'watch' ? `Watch ${r.preferred}, recheck at ${clock(ward!.now + inMin)}` : `Escalate to ${staffName('osei')}`}
       </button>
     </div>
@@ -160,7 +160,7 @@ function ConcernPanel({ concern }: { concern: Concern }) {
       <Panel
         title={
           <span className="flex flex-wrap items-center gap-2">
-            {r.name} <span className="font-sans text-[13px] font-normal text-ink-3">room {r.room} · {r.age}</span>
+            {r.name} <span className="font-mono text-[12px] font-normal text-ink-3">room {r.room} · {r.age}</span>
           </span>
         }
         aside={<StatusPill status={concern.status} overdue={concern.overdue} />}
@@ -168,7 +168,7 @@ function ConcernPanel({ concern }: { concern: Concern }) {
         <DayStrip ward={ward!} residentId={r.id} />
         <div className="mt-3 overflow-x-auto">
           <table className="w-full min-w-[520px] text-left text-[13.5px]">
-            <thead className="text-[11.5px] tracking-wide text-ink-3 uppercase">
+            <thead className="text-[12px] text-ink-3">
               <tr>
                 <th className="py-1.5 font-semibold">Area</th>
                 <th className="py-1.5 font-semibold">Usual</th>
@@ -197,7 +197,7 @@ function ConcernPanel({ concern }: { concern: Concern }) {
                             {' '}
                             · {staffName(c.by)} {clock(c.at)}
                           </span>
-                          {c.quote && <span className="block font-serif text-ink-2 italic">“{c.quote}”</span>}
+                          {c.quote && <span className="block text-ink-2 italic">“{c.quote}”</span>}
                         </span>
                       ))}
                       {fu && <span className={`block ${fu.usual ? 'text-good' : 'text-poor'}`}>{fu.finding} · {clock(fu.at)}</span>}
@@ -244,7 +244,7 @@ function ConcernPanel({ concern }: { concern: Concern }) {
               Close: back to usual
             </button>
             {!concern.closable.ok && (
-              <span className="text-[12.5px] text-ink-3">Needs a recorded outcome for {concern.closable.missing.map((a) => AREAS[a].label.toLowerCase()).join(', ')}</span>
+              <span data-demo="close-hint" className="text-[12.5px] text-ink-3">Needs a recorded outcome for {concern.closable.missing.map((a) => AREAS[a].label.toLowerCase()).join(', ')}</span>
             )}
           </div>
         </Panel>
@@ -286,7 +286,9 @@ export default function Size() {
   const items = board(ward!)
   // Pin the selection: the board reorders as things change, and the panel must not jump to someone else.
   const [sel, setSel] = useState<{ key: string; residentId: string } | null>(() => {
-    const first = items.find((i) => i.tone !== 'done')
+    // The relay links here with ?r=<resident>.
+    const asked = new URLSearchParams(window.location.search).get('r')
+    const first = items.find((i) => i.residentId === asked && i.tone !== 'done') ?? items.find((i) => i.residentId === asked) ?? items.find((i) => i.tone !== 'done')
     return first ? { key: first.key, residentId: first.residentId } : null
   })
   const concerns = deriveConcerns(ward!)
@@ -304,24 +306,32 @@ export default function Size() {
     <div className="space-y-5">
       <Guide who="Workflow 2 · Priya, charge nurse" title="Size it up" steps={ev ? steps : steps.map((s) => ({ ...s, done: false }))} />
       {!ev && (
-        <p className="card border-mid/40 bg-mid-soft/60 px-4 py-3 text-[13.5px]">
+        <p className="border border-mid/40 bg-mid-soft px-4 py-2.5 text-[13.5px]">
           Evelyn hasn’t been reported yet. <Link className="link" href="/spot/">Do workflow 1 first</Link>, or work the board as it is.
         </p>
       )}
-      <div className="grid items-start gap-5 lg:grid-cols-[340px_minmax(0,1fr)]">
-        <Panel title="Board" aside={<span className="text-[12px] text-ink-3">ordered by reason, not score</span>}>
-          <ul className="space-y-1.5">
+      <div className="grid items-start gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
+        <section aria-labelledby="board" className="card">
+          <div className="flex items-baseline justify-between border-b border-line px-4 py-2.5">
+            <h2 id="board" className="text-[15px]">
+              Board
+            </h2>
+            <span className="text-[12px] text-ink-3">ordered by reason, not score</span>
+          </div>
+          <ul>
             {items.map((b) => {
               const r = resident(b.residentId)
               const on = selected?.key === b.key
               return (
-                <li key={b.key}>
+                <li key={b.key} className="border-t border-line first:border-t-0">
                   <button
                     type="button"
+                    data-demo={`board-${b.residentId}`}
                     aria-pressed={on}
                     onClick={() => setSel({ key: b.key, residentId: b.residentId })}
-                    className={`w-full rounded-lg border border-l-4 px-3 py-2 text-left ${TONE[b.tone]} ${on ? 'border-ink bg-sunken/60' : 'border-line hover:border-line-strong'} ${b.tone === 'done' ? 'bg-sunken/40' : ''}`}
+                    className={`relative w-full py-2.5 pr-3 pl-5 text-left ${on ? 'bg-accent-soft' : 'hover:bg-sunken'} ${b.tone === 'done' ? 'text-ink-2' : ''}`}
                   >
+                    <span aria-hidden="true" className={`absolute top-3 bottom-3 left-2 w-[3px] ${TONE[b.tone]}`} />
                     <span className="flex items-baseline justify-between gap-2">
                       <b className="text-[14px]">{r.name}</b>
                       <span className="font-mono text-[11.5px] text-ink-3">{r.room}</span>
@@ -333,7 +343,7 @@ export default function Size() {
               )
             })}
           </ul>
-        </Panel>
+        </section>
         <div className="min-w-0">
           {selected && !selected.concernId && !concern ? <OffersPanel residentId={selected.residentId} /> : concern ? <ConcernPanel concern={concern} /> : <Panel title="Nothing selected">Pick an item on the board.</Panel>}
           {ev?.plans.length ? (

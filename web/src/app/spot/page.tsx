@@ -1,13 +1,45 @@
 'use client'
 
-import { AREAS, clock, deriveConcerns, RESIDENTS, staffName, type Area } from '@thread/engine'
+import { AREAS, board, clock, deriveConcerns, resident, RESIDENTS, staffName, type Area } from '@thread/engine'
 import Link from 'next/link'
 import { useState } from 'react'
-import { AreaIcon, Guide, Panel, StatusPill } from '@/components/ui'
+import { AreaIcon, Guide, StatusPill } from '@/components/ui'
 import { useWard } from '@/lib/ward'
 
 const ME = 'maya'
 type Status = 'usual' | 'different' | 'unchecked'
+
+/** What the nurse sees while Maya works: the same board, updating as soon as she sends. */
+function LiveBoard({ fresh }: { fresh: string | null }) {
+  const { ward } = useWard()
+  const items = board(ward!).filter((b) => b.tone !== 'done')
+  return (
+    <section aria-labelledby="live" className="card">
+      <div className="flex items-baseline justify-between border-b border-line px-4 py-2.5">
+        <h2 id="live" className="text-[15px]">
+          Priya’s board
+        </h2>
+        <span className="flex items-center gap-1.5 text-[12px] text-ink-3">
+          <span className="inline-block size-1.5 rounded-full bg-good" /> live
+        </span>
+      </div>
+      <ul>
+        {items.map((b) => {
+          const r = resident(b.residentId)
+          return (
+            <li key={b.key} data-demo={`live-${r.id}`} className={`grid grid-cols-[1fr_auto] gap-x-3 border-t border-line px-4 py-2.5 first:border-t-0 ${b.residentId === fresh ? 'flash' : ''}`}>
+              <span>
+                <b className="text-[14px]">{r.name}</b> <span className="font-mono text-[11.5px] text-ink-3">{r.room}</span>
+                <span className="block text-[12.5px] text-ink-3">{b.detail}</span>
+              </span>
+              <span className={`text-right text-[12.5px] font-semibold ${b.tone === 'urgent' ? 'text-poor' : 'text-ink-2'}`}>{b.reason}</span>
+            </li>
+          )
+        })}
+      </ul>
+    </section>
+  )
+}
 
 export default function Spot() {
   const { ward, send, busy } = useWard()
@@ -55,56 +87,45 @@ export default function Spot() {
 
   return (
     <div className="space-y-5">
-      <Guide who="Workflow 1 · Maya, day PSW" title="Spot it" steps={steps} />
-      <div className="grid items-start gap-5 lg:grid-cols-[300px_minmax(0,1fr)]">
-        <Panel title="Your residents">
-          <ul className="space-y-1.5">
-            {mine.map((x) => {
-              const c = open(x.id)
-              const last = lastCheck(x.id)
-              return (
-                <li key={x.id}>
-                  <button
-                    type="button"
-                    onClick={() => pick(x.id)}
-                    aria-pressed={rid === x.id}
-                    className={`flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors ${rid === x.id ? 'border-ink bg-sunken/60' : 'border-line hover:border-line-strong'}`}
-                  >
-                    <span className="grid size-9 shrink-0 place-items-center rounded-full bg-accent-soft font-serif text-[14px] font-semibold text-accent-strong">
-                      {x.name
-                        .split(' ')
-                        .map((p) => p[0])
-                        .join('')}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <b className="block text-[14.5px]">{x.name}</b>
-                      <span className="text-[12px] text-ink-3">
-                        Room {x.room} · {last ? `checked ${clock(last.at)}` : 'not checked today'}
-                      </span>
-                      {c && (
-                        <span className="mt-1 block">
-                          <StatusPill status={c.status} overdue={c.overdue} />
+      <Guide who="Workflow 1 · Maya, day PSW, on her phone" title="Spot it" steps={steps} />
+      <div className="grid items-start gap-6 lg:grid-cols-[400px_minmax(0,1fr)]">
+        <div className="mx-auto w-full max-w-[400px] overflow-hidden rounded-[22px] border-[6px] border-ink bg-surface">
+          <div className="flex items-center justify-between bg-ink px-4 pt-1 pb-2 font-mono text-[11px] text-white/80">
+            <span>{clock(ward!.now)}</span>
+            <span>THREAD · Maya</span>
+          </div>
+          {!r ? (
+            <div>
+              <p className="border-b border-line px-4 py-2.5 text-[13px] font-semibold">Your residents</p>
+              <ul>
+                {mine.map((x) => {
+                  const c = open(x.id)
+                  const last = lastCheck(x.id)
+                  return (
+                    <li key={x.id} className="border-b border-line last:border-b-0">
+                      <button type="button" data-demo={`resident-${x.id}`} onClick={() => pick(x.id)} className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-sunken">
+                        <span className="min-w-0 flex-1">
+                          <b className="block text-[15px]">{x.name}</b>
+                          <span className="text-[12.5px] text-ink-3">
+                            Room {x.room} · {last ? `checked ${clock(last.at)}` : 'not checked today'}
+                          </span>
                         </span>
-                      )}
-                    </span>
-                  </button>
-                </li>
-              )
-            })}
-          </ul>
-        </Panel>
-
-        {!r ? (
-          <Panel title="Check-in">
-            <p className="text-[14px] text-ink-3">Pick a resident. You’ll compare what you see with what is usual for them.</p>
-          </Panel>
-        ) : sent ? (
-          <Panel title={`${r.name} · room ${r.room}`}>
-            <div className="enter space-y-3">
-              <p className="text-[16px] font-semibold">{sent.reported ? `Sent to Priya at ${clock(sent.at)}.` : `Check-in saved at ${clock(sent.at)}.`}</p>
+                        {c && <StatusPill status={c.status} overdue={c.overdue} />}
+                        <span aria-hidden="true" className="text-ink-3">
+                          ›
+                        </span>
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
+          ) : sent ? (
+            <div className="enter space-y-3 px-4 py-5">
+              <p className="text-[17px] font-semibold">{sent.reported ? `Sent to Priya at ${clock(sent.at)}.` : `Check-in saved at ${clock(sent.at)}.`}</p>
               <p className="text-[14px] text-ink-2">
                 {sent.reported
-                  ? `It is on her board now as “Not yet seen by a nurse”. ${unchecked.length ? `Listed as not known: ${unchecked.map((a) => AREAS[a].label.toLowerCase()).join(', ')}.` : ''}`
+                  ? `It is on her board now. ${unchecked.length ? `Sent as not known: ${unchecked.map((a) => AREAS[a].label.toLowerCase()).join(', ')}.` : ''}`
                   : 'Everything you checked was usual. No report needed.'}
               </p>
               <div className="flex flex-wrap gap-2">
@@ -113,82 +134,102 @@ export default function Spot() {
                     Continue as the nurse
                   </Link>
                 )}
-                <button type="button" className="btn" onClick={() => pick(r.id)}>
-                  New check-in
+                <button type="button" className="btn" onClick={() => setRid(null)}>
+                  Back to residents
                 </button>
               </div>
             </div>
-          </Panel>
-        ) : (
-          <Panel title={`${r.name} · room ${r.room}`} aside={<span className="text-[12.5px] text-ink-3">Compared with {r.pronoun === 'she' ? 'her' : 'his'} usual</span>}>
-            <ul className="divide-y divide-line">
-              {areas.map((a) => {
-                const m = marks[a]
-                return (
-                  <li key={a} className="grid gap-2 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-                    <div className="flex items-start gap-3">
-                      <AreaIcon area={a} />
-                      <div>
-                        <b className="block text-[14px]">{AREAS[a].label}</b>
-                        <span className="text-[13px] text-ink-3">Usually: {r.usual[a]}</span>
+          ) : (
+            <div>
+              <div className="flex items-center gap-2 border-b border-line px-3 py-2.5">
+                <button type="button" className="px-1 text-[18px] leading-none text-ink-3 hover:text-ink" onClick={() => setRid(null)} aria-label="Back to residents">
+                  ‹
+                </button>
+                <span className="min-w-0 flex-1">
+                  <b className="block text-[15px]">{r.name}</b>
+                  <span className="text-[12px] text-ink-3">
+                    Room {r.room} · compared with {r.pronoun === 'she' ? 'her' : 'his'} usual
+                  </span>
+                </span>
+              </div>
+              <ul>
+                {areas.map((a) => {
+                  const m = marks[a]
+                  const status = m?.status ?? 'unchecked'
+                  return (
+                    <li key={a} className={`border-b border-line px-4 py-3 ${status === 'different' ? 'bg-poor-soft/50' : ''}`}>
+                      <div className="flex items-start gap-2.5">
+                        <AreaIcon area={a} />
+                        <div className="min-w-0">
+                          <b className="block text-[14px]">{AREAS[a].label}</b>
+                          <span className="text-[12.5px] text-ink-3">Usually: {r.usual[a]}</span>
+                        </div>
                       </div>
-                    </div>
-                    <fieldset className="flex rounded-lg border border-line-strong p-0.5 text-[13px] font-medium">
-                      <legend className="sr-only">{AREAS[a].label}</legend>
-                      {(['usual', 'different', 'unchecked'] as Status[]).map((s) => (
-                        <button
-                          key={s}
-                          type="button"
-                          aria-pressed={(m?.status ?? 'unchecked') === s}
-                          onClick={() => mark(a, s)}
-                          className={`rounded-md px-3 py-1 ${(m?.status ?? 'unchecked') === s ? (s === 'different' ? 'bg-poor text-white' : s === 'usual' ? 'bg-good text-white' : 'bg-sunken text-ink') : 'text-ink-3 hover:text-ink'}`}
-                        >
-                          {s === 'usual' ? 'Usual' : s === 'different' ? 'Different' : 'Not checked'}
-                        </button>
-                      ))}
-                    </fieldset>
-                    {m?.status === 'different' && (
-                      <div className="enter flex flex-wrap gap-1.5 sm:col-span-2 sm:pl-8">
-                        {AREAS[a].options.map((o) => (
+                      <fieldset className="seg mt-2 w-full">
+                        <legend className="sr-only">{AREAS[a].label}</legend>
+                        {(['usual', 'different', 'unchecked'] as Status[]).map((s) => (
                           <button
-                            key={o}
+                            key={s}
                             type="button"
-                            aria-pressed={m.finding === o}
-                            onClick={() => setMarks((x) => ({ ...x, [a]: { status: 'different', finding: o } }))}
-                            className={`rounded-full border px-3 py-1 text-[13px] ${m.finding === o ? 'border-ink bg-ink text-white' : 'border-line-strong hover:bg-sunken'}`}
+                            data-demo={`mark-${a}-${s}`}
+                            aria-pressed={status === s}
+                            onClick={() => mark(a, s)}
+                            className={`flex-1 ${status === s && s === 'different' ? 'bg-poor! text-white!' : status === s && s === 'usual' ? 'bg-good! text-white!' : status === s ? 'bg-sunken! text-ink-2!' : ''}`}
                           >
-                            {o}
+                            {s === 'usual' ? 'Usual' : s === 'different' ? 'Different' : 'Not checked'}
                           </button>
                         ))}
-                        <input
-                          className="field w-auto min-w-[200px] flex-1 py-1 text-[13px]"
-                          placeholder="Or describe it"
-                          aria-label={`${AREAS[a].label}: what was different`}
-                          value={m.finding && !AREAS[a].options.includes(m.finding) ? m.finding : ''}
-                          onChange={(e) => setMarks((x) => ({ ...x, [a]: { status: 'different', finding: e.target.value } }))}
-                        />
-                      </div>
-                    )}
-                  </li>
-                )
-              })}
-            </ul>
-            {different.length > 0 && (
-              <label className="mt-2 block text-[13px]">
-                <span className="font-semibold">In {r.pronoun === 'she' ? 'her' : 'his'} words</span> <span className="text-ink-3">(optional)</span>
-                <input className="field mt-1" value={quote} onChange={(e) => setQuote(e.target.value)} maxLength={200} placeholder="What they said" />
-              </label>
-            )}
-            <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-line pt-4">
-              <button type="button" className="btn btn-primary" disabled={!ready || busy} onClick={() => void submit()}>
-                {different.length ? `Send to ${staffName('priya')}` : 'Save check-in'}
-              </button>
-              <span className="text-[13px] text-ink-3">
-                {different.length} different · {unchecked.length} not checked{unchecked.length ? ' (sent as not known)' : ''}
-              </span>
+                      </fieldset>
+                      {m?.status === 'different' && (
+                        <div className="enter mt-2 flex flex-wrap gap-1.5">
+                          {AREAS[a].options.map((o, i) => (
+                            <button
+                              key={o}
+                              type="button"
+                              data-demo={`finding-${a}-${i}`}
+                              aria-pressed={m.finding === o}
+                              onClick={() => setMarks((x) => ({ ...x, [a]: { status: 'different', finding: o } }))}
+                              className={`rounded-sm border px-2 py-1 text-[13px] ${m.finding === o ? 'border-ink bg-ink text-white' : 'border-line-strong bg-surface hover:bg-sunken'}`}
+                            >
+                              {o}
+                            </button>
+                          ))}
+                          <input
+                            className="field py-1 text-[13px]"
+                            placeholder="Or describe it"
+                            aria-label={`${AREAS[a].label}: what was different`}
+                            value={m.finding && !AREAS[a].options.includes(m.finding) ? m.finding : ''}
+                            onChange={(e) => setMarks((x) => ({ ...x, [a]: { status: 'different', finding: e.target.value } }))}
+                          />
+                        </div>
+                      )}
+                    </li>
+                  )
+                })}
+              </ul>
+              {different.length > 0 && (
+                <label className="block border-b border-line px-4 py-3 text-[13px]">
+                  <span className="font-semibold">In {r.pronoun === 'she' ? 'her' : 'his'} words</span> <span className="text-ink-3">(optional)</span>
+                  <input data-demo="quote" className="field mt-1" value={quote} onChange={(e) => setQuote(e.target.value)} maxLength={200} placeholder="What they said" />
+                </label>
+              )}
+              <div className="space-y-2 px-4 py-3">
+                <p className="text-[12.5px] text-ink-3">
+                  {different.length} different · {unchecked.length} not checked{unchecked.length ? ', sent as not known' : ''}
+                </p>
+                <button type="button" data-demo="send" className="btn btn-primary w-full py-2.5 text-[15px]" disabled={!ready || busy} onClick={() => void submit()}>
+                  {different.length ? `Send to ${staffName('priya')}` : 'Save check-in'}
+                </button>
+              </div>
             </div>
-          </Panel>
-        )}
+          )}
+        </div>
+        <div className="space-y-3 lg:sticky lg:top-4">
+          <LiveBoard fresh={sent?.reported ? (rid ?? null) : null} />
+          <p className="text-[12.5px] text-ink-3">
+            Nothing Maya leaves unchecked is assumed fine. It reaches the nurse as <span className="font-semibold text-unknown">not known</span>.
+          </p>
+        </div>
       </div>
     </div>
   )

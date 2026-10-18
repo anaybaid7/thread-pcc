@@ -45,7 +45,7 @@ export default function Rationale() {
   return (
     <div className="space-y-6">
       <div>
-        <p className="eyebrow">Why it works this way</p>
+        <p className="label">Why it works this way</p>
         <h1 className="mt-1 text-[32px]">The problem is the relay</h1>
         <p className="mt-2 max-w-[64ch] text-[15px] text-ink-2">
           Early signs are rarely missed by everyone. They are noticed by one person and lost between people: not passed on, passed on but not checked,

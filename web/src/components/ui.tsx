@@ -26,42 +26,36 @@ export function AreaIcon({ area, size = 18 }: { area: Area; size?: number }) {
 }
 
 const STATUS: Record<Status | 'offers', { label: string; cls: string }> = {
-  new: { label: 'Not yet seen', cls: 'border-poor/40 bg-poor-soft text-poor' },
-  watching: { label: 'Watching', cls: 'border-accent/40 bg-accent-soft text-accent-strong' },
-  escalated: { label: 'Escalated', cls: 'border-mid/40 bg-mid-soft text-mid' },
-  resolved: { label: 'Closed', cls: 'border-good/40 bg-good-soft text-good' },
-  offers: { label: 'No outcome', cls: 'border-mid/40 bg-mid-soft text-mid' },
+  new: { label: 'Not yet seen', cls: 'bg-poor-soft text-poor' },
+  watching: { label: 'Watching', cls: 'bg-accent-soft text-accent-strong' },
+  escalated: { label: 'Escalated', cls: 'bg-mid-soft text-mid' },
+  resolved: { label: 'Closed', cls: 'bg-good-soft text-good' },
+  offers: { label: 'No outcome', cls: 'bg-mid-soft text-mid' },
 }
 
 export function StatusPill({ status, overdue }: { status: Status | 'offers'; overdue?: boolean }) {
-  if (overdue) return <span className="chip border-poor/50 bg-poor text-white">Recheck overdue</span>
+  if (overdue) return <span className="tag bg-poor text-white">Recheck overdue</span>
   const s = STATUS[status]
-  return <span className={`chip ${s.cls}`}>{s.label}</span>
+  return <span className={`tag ${s.cls}`}>{s.label}</span>
 }
 
-/** The steps of a workflow, with the current one highlighted. Done is derived from the ward, not from clicks. */
+/** Who is working, and the steps of their workflow. Done is derived from the ward, not from clicks. */
 export function Guide({ title, who, steps }: { title: string; who: string; steps: { label: string; done: boolean }[] }) {
   const current = steps.findIndex((s) => !s.done)
   return (
-    <div className="card flex flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3">
-      <div className="min-w-[180px]">
-        <p className="eyebrow">{who}</p>
-        <h1 className="text-[22px] leading-tight">{title}</h1>
+    <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-2 border-b border-line pb-3">
+      <div>
+        <p className="label">{who}</p>
+        <h1 className="text-[22px]">{title}</h1>
       </div>
-      <ol className="flex flex-1 flex-wrap gap-2" aria-label="Steps">
+      <ol className="flex flex-wrap gap-x-5 gap-y-1 text-[13px]" aria-label="Steps">
         {steps.map((s, i) => (
-          <li
-            key={s.label}
-            aria-current={i === current ? 'step' : undefined}
-            className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-[13px] ${
-              s.done ? 'border-good/30 bg-good-soft text-good' : i === current ? 'border-ink bg-ink text-white' : 'border-line text-ink-3'
-            }`}
-          >
+          <li key={s.label} aria-current={i === current ? 'step' : undefined} className={`flex items-baseline gap-1.5 ${s.done ? 'text-good' : i === current ? 'font-semibold text-ink' : 'text-ink-3'}`}>
             <span className="font-mono text-[11.5px]">{s.done ? '✓' : i + 1}</span>
-            {s.label}
+            <span className={i === current ? 'underline decoration-2 underline-offset-4' : ''}>{s.label}</span>
           </li>
         ))}
-        {current === -1 && <li className="self-center text-[13px] font-semibold text-good">Done</li>}
+        {current === -1 && <li className="font-semibold text-good">Done</li>}
       </ol>
     </div>
   )
@@ -69,12 +63,12 @@ export function Guide({ title, who, steps }: { title: string; who: string; steps
 
 export function Panel({ title, aside, children, className = '' }: { title: ReactNode; aside?: ReactNode; children: ReactNode; className?: string }) {
   return (
-    <section className={`card p-4 sm:p-5 ${className}`}>
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-[17px]">{title}</h2>
+    <section className={`card ${className}`}>
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-2.5">
+        <h2 className="text-[15px]">{title}</h2>
         {aside}
       </div>
-      {children}
+      <div className="p-4">{children}</div>
     </section>
   )
 }
@@ -121,7 +115,7 @@ export function DayStrip({ ward, residentId }: { ward: Ward; residentId: string 
         {[0, 6, 12, 18, 24].map((h) => (
           <g key={h}>
             <line x1={x(start + h * 60)} x2={x(start + h * 60)} y1={8} y2={30} stroke="var(--color-line)" />
-            <text x={x(start + h * 60)} y={42} textAnchor="middle" fontSize="10" fill="var(--color-ink-3)" fontFamily="ui-monospace, Menlo, monospace">
+            <text x={x(start + h * 60)} y={42} textAnchor="middle" fontSize="10" fill="var(--color-ink-3)" fontFamily="var(--font-mono)">
               {h === 24 ? 'now' : clock(start + h * 60)}
             </text>
           </g>
