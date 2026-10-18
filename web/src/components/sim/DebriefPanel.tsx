@@ -1,58 +1,21 @@
 'use client'
 
 import type { Debrief } from '@thread/engine'
-import { ScoreLineRow, scoreTone } from './DecisionPanel'
+import dynamic from 'next/dynamic'
+import { useState } from 'react'
+import { Ring, toneOf } from '../motion'
+import { ScoreLineRow } from './DecisionPanel'
 
-function Ring({ value, max }: { value: number; max: number }) {
-  const r = 44
-  const c = 2 * Math.PI * r
-  const tone = scoreTone(value, max)
-  return (
-    // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- an inline score ring with a text alternative
-    <svg width="112" height="112" viewBox="0 0 112 112" role="img" aria-label={`${value} out of ${max}`}>
-      <circle cx="56" cy="56" r={r} fill="none" stroke="var(--color-sunken)" strokeWidth="10" />
-      <circle
-        cx="56"
-        cy="56"
-        r={r}
-        fill="none"
-        stroke={`var(--color-${tone})`}
-        strokeWidth="10"
-        strokeLinecap="round"
-        strokeDasharray={`${(value / max) * c} ${c}`}
-        transform="rotate(-90 56 56)"
-      />
-      <text x="56" y="56" textAnchor="middle" fontSize="28" fontWeight="700" fill="var(--color-ink)" fontFamily="var(--font-serif)">
-        {value}
-      </text>
-      <text x="56" y="75" textAnchor="middle" fontSize="11.5" fill="var(--color-ink-3)">
-        of {max}
-      </text>
-    </svg>
-  )
+const ForkScene = dynamic(() => import('../three/ForkScene'), { ssr: false, loading: () => <div className="h-full animate-pulse rounded-xl bg-sunken/60" /> })
+
+const SHORT: Record<string, string> = {
+  recognition: 'Noticed',
+  communication: 'Acted',
+  evidence: 'Fact vs. guess',
+  handover: 'Handover',
 }
 
-function List({ title, items, empty, tone }: { title: string; items: string[]; empty: string; tone?: 'poor' | 'mid' }) {
-  return (
-    <div>
-      <h3 className="font-sans text-[14.5px] font-semibold">{title}</h3>
-      {items.length ? (
-        <ul className="mt-1.5 space-y-1.5">
-          {items.map((x) => (
-            <li key={x} className="flex gap-2 text-[13.5px] text-ink-2">
-              <span aria-hidden="true" style={{ color: tone ? `var(--color-${tone})` : 'var(--color-ink-3)' }}>
-                •
-              </span>
-              <span>{x}</span>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="mt-1.5 text-[13.5px] text-ink-3">{empty}</p>
-      )}
-    </div>
-  )
-}
+type Tab = 'changed' | 'unknown' | 'slips' | 'choices'
 
 export function DebriefPanel({
   debrief,
@@ -65,130 +28,163 @@ export function DebriefPanel({
   busy: boolean
   onReplay: (course: 'same' | 'other') => void
 }) {
+  const [open, setOpen] = useState<string | null>(null)
+  const [tab, setTab] = useState<Tab>('choices')
   const other = debrief.otherCourses[0]
+  const forked = debrief.course.id === 'persist' || debrief.course.id === 'resolve'
+  const tone = toneOf(debrief.total, debrief.max)
+  const crit = debrief.criteria.find((c) => c.key === open)
+
+  const TABS: { id: Tab; label: string; count: number }[] = [
+    { id: 'choices', label: 'Other choices', count: debrief.alternatives.length },
+    { id: 'changed', label: 'What changed', count: debrief.deviations.length },
+    { id: 'unknown', label: 'Not known', count: debrief.missing.length },
+    { id: 'slips', label: 'Guesses as facts', count: debrief.slips.length },
+  ]
+
   return (
     <section className="space-y-5" aria-labelledby="debrief-title">
-      <div className="card reveal p-5 sm:p-6">
-        <div className="flex flex-wrap items-center gap-5">
-          <Ring value={debrief.total} max={debrief.max} />
-          <div className="min-w-0 flex-1">
-            <p className="eyebrow">Debrief</p>
-            <h2 id="debrief-title" className="mt-1 text-[26px]">
-              {debrief.total >= 85 ? 'Clear, timely, grounded.' : debrief.total >= 60 ? 'Good instincts, with gaps.' : 'Worth another look.'}
-            </h2>
-            <p className="mt-1 max-w-[62ch] text-[14.5px] text-ink-2">
-              In this run: <b>{debrief.course.summary}</b> Every decision was scored on what you knew
-              at the time, so the way the day turned out didn’t change any earlier score.
-            </p>
+      <div className="card flip-in overflow-hidden">
+        <div className="grid gap-5 p-5 sm:p-6 lg:grid-cols-[auto_1fr]">
+          <div className="flex items-center gap-5">
+            <Ring value={debrief.total} max={debrief.max} size={128} stroke={11} />
+            <div>
+              <p className="eyebrow">Debrief</p>
+              <h2 id="debrief-title" className="mt-1 text-[28px]" style={{ color: `var(--color-${tone})` }}>
+                {tone === 'good' ? 'Clear and grounded.' : tone === 'mid' ? 'Good instincts, some gaps.' : 'Worth another go.'}
+              </h2>
+              <p className="mt-1 text-[14px] text-ink-2">Every score used only what you knew at the time.</p>
+            </div>
           </div>
+          <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:self-center">
+            {debrief.criteria.map((c) => (
+              <li key={c.key}>
+                <button
+                  type="button"
+                  onClick={() => setOpen(open === c.key ? null : c.key)}
+                  aria-pressed={open === c.key}
+                  className={`flex w-full flex-col items-center gap-1 rounded-xl border-2 p-2.5 transition-all hover:-translate-y-0.5 hover:shadow-md ${open === c.key ? 'border-accent bg-accent-soft' : 'border-line'}`}
+                >
+                  <Ring value={c.earned} max={c.max} size={62} stroke={7} label={`${SHORT[c.key]}: ${c.earned} of ${c.max}`} />
+                  <span className="text-[12.5px] font-semibold">{SHORT[c.key]}</span>
+                  <span className="text-[11.5px] text-ink-3 tabular-nums">
+                    {c.earned}/{c.max}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
         </div>
-
-        <div className="mt-5 grid gap-3 sm:grid-cols-2">
-          {debrief.criteria.map((c) => {
-            const tone = scoreTone(c.earned, c.max)
-            return (
-              <details key={c.key} className="group rounded-lg border border-line p-3">
-                <summary className="cursor-pointer list-none">
-                  <div className="flex items-baseline justify-between gap-2">
-                    <b className="text-[14.5px]">{c.label}</b>
-                    <span className="text-[14px] font-bold tabular-nums" style={{ color: `var(--color-${tone})` }}>
-                      {c.earned}/{c.max}
-                    </span>
-                  </div>
-                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-sunken" aria-hidden="true">
-                    <div className="h-full rounded-full" style={{ width: `${(c.earned / c.max) * 100}%`, background: `var(--color-${tone})` }} />
-                  </div>
-                  <p className="mt-1.5 text-[12.5px] text-ink-3">
-                    {c.about} <span className="text-accent group-open:hidden">Why ▸</span>
-                  </p>
-                </summary>
-                <ul className="mt-2 space-y-2">
-                  {c.lines.map((l) => (
-                    <ScoreLineRow key={l.item} {...l} />
-                  ))}
-                </ul>
-              </details>
-            )
-          })}
-        </div>
-        <p className="mt-3 text-[12px] text-ink-3">
-          Illustrative prototype rubric: recognition 30, communication 30, facts vs. assumptions vs. unknowns 25, handover clarity 15. No points are given
-          for naming a diagnosis, predicting an outcome or reaching a dramatic ending. Not a validated assessment.
-        </p>
-      </div>
-
-      <div className="card p-5 sm:p-6">
-        <div className="grid gap-6 md:grid-cols-2">
-          <List title={`What changed from ${name}’s baseline`} items={debrief.deviations} empty="No changes below their usual were revealed in this run." />
-          <List title="What wasn’t known" items={debrief.missing} empty="Nothing was flagged as unknown." tone="mid" />
-          <List
-            title="Where an assumption was treated as a fact"
-            items={debrief.slips}
-            empty="None. You kept what was seen apart from guesses and gaps throughout."
-            tone="poor"
-          />
-          <div>
-            <h3 className="font-sans text-[14.5px] font-semibold">What good communication looked like</h3>
-            <ul className="mt-1.5 space-y-2">
-              {debrief.communication.map((c) => (
-                <li key={c.title} className="text-[13.5px] text-ink-2">
-                  <b className="text-ink">{c.title}</b> {c.expected}
-                </li>
+        {crit && (
+          <div className="pop border-t border-line bg-sunken/40 p-4 sm:px-6">
+            <p className="text-[13px] text-ink-3">{crit.about}</p>
+            <ul className="mt-2 grid gap-2 md:grid-cols-2">
+              {crit.lines.map((l) => (
+                <ScoreLineRow key={l.item} {...l} />
               ))}
             </ul>
           </div>
-        </div>
-      </div>
-
-      <div className="card p-5 sm:p-6">
-        <h3 className="text-[19px]">If you’d chosen differently</h3>
-        <div className="mt-3 grid gap-4 lg:grid-cols-2">
-          {debrief.alternatives.map((a) => (
-            <div key={a.title}>
-              <p className="text-[14px] font-semibold">{a.title}</p>
-              <ul className="mt-2 space-y-2">
-                {a.options.map((o) => {
-                  const tone = scoreTone(o.earned, o.max)
-                  return (
-                    <li key={o.label} className={`rounded-lg border p-3 ${o.chosen ? 'border-ink' : 'border-line'}`}>
-                      <div className="flex items-baseline justify-between gap-2">
-                        <b className="text-[13.5px]">
-                          {o.chosen && <span className="mr-1 rounded bg-ink px-1.5 py-px text-[11px] text-white">You</span>}
-                          {o.label}
-                        </b>
-                        <span className="shrink-0 text-[12.5px] font-bold tabular-nums" style={{ color: `var(--color-${tone})` }}>
-                          {o.earned}/{o.max}
-                        </span>
-                      </div>
-                      <p className="mt-1 text-[13px] text-ink-2">{o.feedback}</p>
-                    </li>
-                  )
-                })}
-              </ul>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="card border-2 border-accent/60 p-5 sm:p-6">
-        <p className="font-serif text-[19px] leading-snug">“{debrief.insight}”</p>
-        <div className="mt-4 flex flex-wrap gap-3">
-          {other && (
-            <button className="btn btn-primary btn-lg" onClick={() => onReplay('other')} disabled={busy}>
-              Replay: the other version of the day
-            </button>
-          )}
-          <button className="btn btn-lg" onClick={() => onReplay('same')} disabled={busy}>
-            Replay this version
-          </button>
-        </div>
-        {other && (
-          <p className="mt-3 text-[13.5px] text-ink-2">
-            In the other version of the day: {other.summary} Try the same choices there: your Monday 11:00 score will be
-            identical, because it depends on what you knew at 11:00, not on how the day turned out. Replays are new attempts; this one stays as it is.
-          </p>
         )}
       </div>
+
+      {forked && other && (
+        <div className="card overflow-hidden">
+          <div className="grid lg:grid-cols-[1.2fr_1fr]">
+            <div className="h-[230px] bg-gradient-to-b from-surface to-sunken/50 sm:h-[260px]">
+              <ForkScene taken={debrief.course.id as 'persist' | 'resolve'} />
+            </div>
+            <div className="flex flex-col justify-center gap-3 p-5 sm:p-6">
+              <p className="eyebrow">This run</p>
+              <p className="font-serif text-[20px] leading-snug">{debrief.course.summary}</p>
+              <p className="text-[14px] text-ink-2">Same Monday choice in the other version = same score. Try it.</p>
+              <div className="flex flex-wrap gap-2">
+                <button className="btn btn-primary btn-lg" onClick={() => onReplay('other')} disabled={busy}>
+                  Play the other version
+                </button>
+                <button className="btn btn-lg" onClick={() => onReplay('same')} disabled={busy}>
+                  Replay
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="card p-4 sm:p-5">
+        <fieldset className="flex flex-wrap gap-1.5">
+          <legend className="sr-only">Debrief details</legend>
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              aria-pressed={tab === t.id}
+              onClick={() => setTab(t.id)}
+              className={`rounded-full px-3 py-1.5 text-[13px] font-semibold transition-colors ${tab === t.id ? 'bg-ink text-white' : 'bg-sunken text-ink-2 hover:bg-line'}`}
+            >
+              {t.label} <span className="ml-0.5 opacity-60 tabular-nums">{t.count}</span>
+            </button>
+          ))}
+        </fieldset>
+        <div key={tab} className="slide-in mt-4">
+          {tab === 'choices' && (
+            <div className="grid gap-4 lg:grid-cols-2">
+              {debrief.alternatives.map((a) => (
+                <div key={a.title}>
+                  <p className="text-[13.5px] font-semibold text-ink-3">{a.title.split('.')[0]}</p>
+                  <ul className="mt-2 space-y-1.5">
+                    {a.options.map((o) => {
+                      const t = toneOf(o.earned, o.max)
+                      return (
+                        <li key={o.label}>
+                          <details className={`group rounded-lg border ${o.chosen ? 'border-ink' : 'border-line'}`}>
+                            <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2">
+                              <span className="h-2 shrink-0 rounded-full" style={{ width: `${Math.max(8, (o.earned / o.max) * 48)}px`, background: `var(--color-${t})` }} aria-hidden="true" />
+                              <span className="flex-1 text-[13.5px] font-medium">
+                                {o.chosen && <span className="mr-1.5 rounded bg-ink px-1.5 py-px text-[10.5px] text-white">YOU</span>}
+                                {o.label}
+                              </span>
+                              <span className="text-[12.5px] font-bold tabular-nums" style={{ color: `var(--color-${t})` }}>
+                                {o.earned}/{o.max}
+                              </span>
+                            </summary>
+                            <p className="px-3 pb-2.5 text-[13px] text-ink-2">{o.feedback}</p>
+                          </details>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          )}
+          {tab === 'changed' && <Bullets items={debrief.deviations} empty={`Nothing below ${name}’s usual came up.`} color="var(--color-intake)" />}
+          {tab === 'unknown' && <Bullets items={debrief.missing} empty="Nothing was flagged unknown." color="var(--color-unknown)" dashed />}
+          {tab === 'slips' && <Bullets items={debrief.slips} empty="None. Facts stayed facts." color="var(--color-poor)" />}
+        </div>
+      </div>
+
+      <p className="px-1 text-center font-serif text-[18px] text-ink-2 italic">“{debrief.insight}”</p>
+      {!forked && (
+        <div className="flex justify-center">
+          <button className="btn btn-primary btn-lg" onClick={() => onReplay('same')} disabled={busy}>
+            Play again
+          </button>
+        </div>
+      )}
     </section>
+  )
+}
+
+function Bullets({ items, empty, color, dashed }: { items: string[]; empty: string; color: string; dashed?: boolean }) {
+  if (!items.length) return <p className="text-[14px] text-ink-3">{empty}</p>
+  return (
+    <ul className="grid gap-2 md:grid-cols-2">
+      {items.map((x) => (
+        <li key={x} className={`flex gap-2.5 rounded-lg border px-3 py-2 text-[13.5px] ${dashed ? 'border-dashed' : ''}`} style={{ borderColor: color }}>
+          <span className="mt-1.5 size-2 shrink-0 rounded-full" style={{ background: color }} aria-hidden="true" />
+          <span className="text-ink-2">{x}</span>
+        </li>
+      ))}
+    </ul>
   )
 }

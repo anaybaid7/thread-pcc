@@ -8,10 +8,10 @@ import { KIND } from './EventTimeline'
 type SectionKey = 'situation' | 'background' | 'assessment' | 'recommendation'
 
 const SECTIONS: { key: SectionKey; letter: string; title: string; hint: string; allowUnknown: boolean }[] = [
-  { key: 'situation', letter: 'S', title: 'Situation', hint: 'What is happening now, compared with their usual?', allowUnknown: false },
-  { key: 'background', letter: 'B', title: 'Background', hint: 'What is usual for this resident? What relevant context is documented?', allowUnknown: false },
-  { key: 'assessment', letter: 'A', title: 'Assessment: what was observed', hint: 'What was actually seen, with day and time. Offered is not the same as consumed.', allowUnknown: false },
-  { key: 'recommendation', letter: 'R', title: 'Recommendation / request', hint: 'What are you asking for? An assessment, what to record, who to tell. Not a diagnosis or treatment.', allowUnknown: true },
+  { key: 'situation', letter: 'S', title: 'Situation', hint: 'What’s happening now vs. usual', allowUnknown: false },
+  { key: 'background', letter: 'B', title: 'Background', hint: 'What’s usual for them', allowUnknown: false },
+  { key: 'assessment', letter: 'A', title: 'Assessment', hint: 'What was seen, with times. Offered ≠ drunk.', allowUnknown: false },
+  { key: 'recommendation', letter: 'R', title: 'Request', hint: 'What you’re asking for. No diagnosis.', allowUnknown: true },
 ]
 
 const EMPTY: HandoverDraft = {
@@ -64,8 +64,23 @@ function SectionEditor({
 }) {
   const byId = new Map(facts.map((f) => [f.id, f]))
   const citable = facts.filter((f) => (allowUnknown || f.kind !== 'unknown') && !value.factIds.includes(f.id))
+  const [over, setOver] = useState(false)
   return (
-    <div className="rounded-lg border border-line p-3">
+    // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- drag-and-drop is a shortcut; the "cite a fact" menu is the accessible path
+    <div
+      onDragOver={(e) => {
+        if (!e.dataTransfer.types.includes('text/x-fact')) return
+        e.preventDefault()
+        setOver(true)
+      }}
+      onDragLeave={() => setOver(false)}
+      onDrop={(e) => {
+        setOver(false)
+        const id = e.dataTransfer.getData('text/x-fact')
+        if (id && citable.some((f) => f.id === id)) onChange({ ...value, factIds: [...value.factIds, id] })
+      }}
+      className={`rounded-xl border-2 p-3 transition-colors ${over ? 'border-accent bg-accent-soft/50' : 'border-line'}`}
+    >
       <div className="flex items-start justify-between gap-2">
         <label className="block min-w-0 flex-1">
           <span className="text-[14.5px] font-semibold">{label}</span>
@@ -74,7 +89,7 @@ function SectionEditor({
             className="field mt-2 min-h-[64px] resize-y leading-snug"
             style={{ fieldSizing: 'content' } as React.CSSProperties}
             value={value.text}
-            maxLength={1200}
+            maxLength={2000}
             onChange={(e) => onChange({ ...value, text: e.target.value })}
           />
         </label>
@@ -159,12 +174,12 @@ export function HandoverEditor({
       <h2 id="handover-title" className="mt-1 text-[22px]">
         Hand over to {handover.to}
       </h2>
-      <p className="mt-1 text-[14.5px] text-ink-2">{handover.purpose}</p>
+
 
       <div className="mt-4 grid gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.4fr)]">
         <div>
-          <h3 className="font-sans text-[14.5px] font-semibold">Facts you can use</h3>
-          <p className="text-[12.5px] text-ink-3">Untick anything you don’t want in the draft. Only these facts can be cited.</p>
+          <h3 className="font-sans text-[14.5px] font-semibold">Facts</h3>
+          <p className="text-[12.5px] text-ink-3">Drag onto a section to cite. Untick to leave out of a draft.</p>
           <div className="mt-2 max-h-[460px] space-y-3 overflow-y-auto pr-1">
             {GROUPS.map((g) => {
               const list = facts.filter(g.match)
@@ -175,7 +190,15 @@ export function HandoverEditor({
                   <ul className="mt-1.5 space-y-1">
                     {list.map((f) => (
                       <li key={f.id}>
-                        <label className="flex cursor-pointer gap-2 rounded-md p-1.5 text-[13px] hover:bg-sunken">
+                        {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- dragging is a shortcut; the "cite a fact" menu is the accessible path */}
+                        <label
+                          draggable
+                          onDragStart={(e) => {
+                            e.dataTransfer.setData('text/x-fact', f.id)
+                            e.dataTransfer.effectAllowed = 'copy'
+                          }}
+                          className="flex cursor-grab gap-2 rounded-md p-1.5 text-[13px] hover:bg-sunken active:cursor-grabbing"
+                        >
                           <input
                             type="checkbox"
                             className="mt-0.5 accent-[var(--color-accent)]"
@@ -215,13 +238,7 @@ export function HandoverEditor({
               Write it myself
             </button>
           </div>
-          {!geminiReady && (
-            <p className="mt-2 text-[12.5px] text-ink-3">
-              {mode === 'practice'
-                ? 'AI drafting needs the THREAD server; practice mode uses the standard template.'
-                : 'Gemini isn’t configured on this server, so drafts use the standard template.'}
-            </p>
-          )}
+          {!geminiReady && <p className="mt-2 text-[12.5px] text-ink-3">{mode === 'practice' ? 'AI drafts need the server.' : 'Gemini not configured: template drafts.'}</p>}
           {draftError && (
             <p role="alert" className="mt-2 rounded-lg bg-poor-soft p-2.5 text-[13.5px] text-poor">
               {draftError}
@@ -232,15 +249,14 @@ export function HandoverEditor({
             <div className={`mt-3 rounded-lg border p-3 text-[13px] ${meta.source === 'gemini' ? 'border-[#c9b8e0] bg-[#f5f0fb]' : 'border-line bg-sunken/60'}`} aria-live="polite">
               {meta.source === 'gemini' ? (
                 <p>
-                  <b>✦ AI-assisted draft</b> ({meta.model}). Gemini only rephrased the facts listed here, and every section was checked against them.
-                  It can still be wrong or incomplete. <b>Review and edit every line</b> before you submit. It does not replace your own assessment or
-                  your facility’s reporting procedures.
+                  <b>✦ AI-assisted draft</b> · {meta.model}. Built only from these facts and checked against them. <b>Review every line.</b> It doesn’t replace
+                  your judgment or your home’s procedures.
                 </p>
               ) : (
                 <p>
                   <b>Standard template.</b> {meta.fallbackReason}
                   {meta.validation.length > 0 && <span className="mt-1 block text-ink-3">Checks that failed: {meta.validation.slice(0, 3).join(' ')}</span>}
-                  <span className="mt-1 block">Edit it into your own words before you submit.</span>
+
                 </p>
               )}
             </div>
@@ -271,8 +287,8 @@ export function HandoverEditor({
                 />
               ))}
               <div className="rounded-lg border border-dashed border-unknown/60 bg-[#fbf6f0] p-3">
-                <p className="text-[14.5px] font-semibold">What isn’t known</p>
-                <p className="text-[12.5px] text-ink-3">Gaps stay gaps. Listing them stops anyone mistaking “not recorded” for “fine”.</p>
+                <p className="text-[14.5px] font-semibold">Not known</p>
+                <p className="text-[12.5px] text-ink-3">“Not recorded” is not “fine”.</p>
                 <div className="mt-2 space-y-2">
                   {draft.unknowns.map((u, i) => (
                     <SectionEditor
@@ -304,10 +320,13 @@ export function HandoverEditor({
               </div>
             </form>
           ) : (
-            <p className="mt-4 rounded-lg border border-dashed border-line-strong p-4 text-[14px] text-ink-3">
-              Start from a draft or write it yourself. Either way, the handover you submit is yours, and it is scored on clarity: situation, background,
-              timed observations, a clear request, and what isn’t known.
-            </p>
+            <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-5">
+              {['S', 'B', 'A', 'R', '?'].map((l, i) => (
+                <div key={l} className="pop grid aspect-square place-items-center rounded-xl border-2 border-dashed border-line-strong font-serif text-[28px] text-ink-3" style={{ animationDelay: `${i * 60}ms` }}>
+                  {l}
+                </div>
+              ))}
+            </div>
           )}
         </div>
       </div>
