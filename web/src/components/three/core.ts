@@ -164,11 +164,6 @@ export function createStage(
 
 export const ease = {
   outCubic: (x: number) => 1 - Math.pow(1 - Math.min(1, Math.max(0, x)), 3),
-  outBack: (x: number) => {
-    const c = 1.70158
-    const t = Math.min(1, Math.max(0, x))
-    return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2)
-  },
 }
 
 /** A tube along a curve that can be "drawn" progressively (0..1). */

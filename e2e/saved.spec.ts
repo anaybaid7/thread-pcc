@@ -11,12 +11,12 @@ test('saved mode: play Evelyn end to end, persisted, then replay the other versi
   await expect(page).toHaveURL(/attempt=[0-9a-f-]{36}/)
   const attemptId = new URL(page.url()).searchParams.get('attempt')!
   await expect(page.getByText(/Saved · local DB/)).toBeVisible()
-  await page.getByRole('button', { name: 'Start the shift →' }).click()
+  await page.getByRole('button', { name: 'Start the shift' }).click()
 
   await drawUntilStop(page)
   await noA11yViolations(page, 'decision')
   await decide(page, EVELYN.d1)
-  await expect(page.locator('#feedback-title')).toHaveText('Strong call.')
+  await expect(page.locator('#feedback-title')).toHaveText(/Tell Priya/)
 
   // The decision is in PostgreSQL with exactly the evidence that was on screen.
   const log = await (await request.get(`http://127.0.0.1:8010/api/attempts/${attemptId}/log`)).json()
@@ -32,7 +32,7 @@ test('saved mode: play Evelyn end to end, persisted, then replay the other versi
   await drawUntilStop(page)
   await noA11yViolations(page, 'handover')
   await handOver(page)
-  await expect(page.getByRole('img', { name: '100 out of 100' })).toBeVisible()
+  await expect(page.locator('#debrief-score')).toContainText('100')
   await noA11yViolations(page, 'debrief')
 
   await page.getByRole('button', { name: 'Play the other version' }).click()

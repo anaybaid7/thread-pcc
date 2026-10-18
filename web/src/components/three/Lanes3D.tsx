@@ -72,8 +72,8 @@ export default function Lanes3D({ points, dimensions, onFallback }: { points: Ch
     }
 
     const beads: { mesh: THREE.Mesh; base: number; born: number; title: string; body: string }[] = []
-    const beadGeom = new THREE.SphereGeometry(0.13, 24, 16)
-    const bigGeom = new THREE.SphereGeometry(0.2, 28, 18)
+    const beadGeom = new THREE.SphereGeometry(0.08, 20, 14)
+    const bigGeom = new THREE.SphereGeometry(0.13, 24, 16)
     const now = performance.now() / 1000
     const still = reducedMotion()
 
@@ -83,7 +83,7 @@ export default function Lanes3D({ points, dimensions, onFallback }: { points: Ch
       // The usual band: 85 to 115.
       const band = new THREE.Mesh(
         new THREE.BoxGeometry(width + 0.9, yOf(30), 0.55),
-        new THREE.MeshStandardMaterial({ color: accent, transparent: true, opacity: 0.1, depthWrite: false }),
+        new THREE.MeshStandardMaterial({ color: accent, transparent: true, opacity: 0.07, depthWrite: false, roughness: 1 }),
       )
       band.position.set(0, yOf(100), z)
       root.add(band)
@@ -91,7 +91,7 @@ export default function Lanes3D({ points, dimensions, onFallback }: { points: Ch
       const pts = points.map((p, i) => ({ p, i, v: p.values[d.key] })).filter((x) => x.v != null) as { p: ChartPoint; i: number; v: number }[]
       if (pts.length > 1) {
         const curve = new THREE.CatmullRomCurve3(pts.map(({ i, v }) => new THREE.Vector3(xOf(i), yOf(v), z)), false, 'catmullrom', 0.3)
-        root.add(new THREE.Mesh(new THREE.TubeGeometry(curve, pts.length * 14, 0.045, 10, false), new THREE.MeshStandardMaterial({ color: c, roughness: 0.4 })))
+        root.add(new THREE.Mesh(new THREE.TubeGeometry(curve, pts.length * 14, 0.026, 8, false), new THREE.MeshStandardMaterial({ color: c, roughness: 0.85, metalness: 0 })))
       }
       for (const { p, i, v } of pts) {
         const observed = p.phase === 'observed'
@@ -100,7 +100,7 @@ export default function Lanes3D({ points, dimensions, onFallback }: { points: Ch
         seen.current.add(key)
         const m = new THREE.Mesh(
           observed ? bigGeom : beadGeom,
-          new THREE.MeshStandardMaterial({ color: observed ? c : 0xffffff, emissive: c, emissiveIntensity: observed ? 0.2 : 0.35, roughness: 0.3 }),
+          new THREE.MeshStandardMaterial({ color: observed ? c : 0xffffff, emissive: c, emissiveIntensity: observed ? 0.05 : 0.18, roughness: 0.85, metalness: 0 }),
         )
         m.position.set(xOf(i), yOf(v), z)
         root.add(m)
@@ -163,8 +163,8 @@ export default function Lanes3D({ points, dimensions, onFallback }: { points: Ch
       for (const b of beads) {
         if (b.born < 0) continue
         const k = (t - b.born) / 0.7
-        b.mesh.position.y = b.base + (1 - ease.outBack(k)) * 2.2
-        b.mesh.scale.setScalar(0.4 + 0.6 * ease.outCubic(k * 1.5))
+        b.mesh.position.y = b.base + (1 - ease.outCubic(k)) * 1.2
+        b.mesh.scale.setScalar(1)
         if (k >= 1) b.born = -1
       }
       for (const l of labels) {

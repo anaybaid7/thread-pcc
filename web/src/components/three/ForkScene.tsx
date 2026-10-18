@@ -38,29 +38,29 @@ export default function ForkScene({ taken = null, labels = true, decisionLabel =
     const resolveCurve = new THREE.CatmullRomCurve3([V(1.35, -1.65, 0), V(2.4, -1.3, 0.35), V(3.6, -0.35, 0.55), V(5, 0.02, 0.5), V(6.3, 0, 0.5)])
     const persistCurve = new THREE.CatmullRomCurve3([V(1.35, -1.65, 0), V(2.4, -2.05, -0.35), V(3.6, -2.55, -0.55), V(5, -2.85, -0.5), V(6.3, -3.05, -0.5)])
 
-    const mat = (c: THREE.Color, opacity = 1) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.35, metalness: 0.1, transparent: opacity < 1, opacity })
-    const usual = growingTube(usualCurve, 0.085, mat(accent))
-    const dip = growingTube(dipCurve, 0.085, mat(amber), 60)
-    const res = growingTube(resolveCurve, 0.07, mat(good, taken === 'persist' ? 0.18 : 1))
-    const per = growingTube(persistCurve, 0.07, mat(poor, taken === 'resolve' ? 0.18 : 1))
+    const mat = (c: THREE.Color, opacity = 1) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.8, metalness: 0, transparent: opacity < 1, opacity })
+    const usual = growingTube(usualCurve, 0.05, mat(accent))
+    const dip = growingTube(dipCurve, 0.05, mat(amber), 60)
+    const res = growingTube(resolveCurve, 0.045, mat(good, taken === 'persist' ? 0.18 : 1))
+    const per = growingTube(persistCurve, 0.045, mat(poor, taken === 'resolve' ? 0.18 : 1))
     for (const t of [usual, dip, res, per]) root.add(t.mesh)
 
     // Events along the usual week, and the decision point that pulses.
-    const beadGeom = new THREE.SphereGeometry(0.14, 24, 16)
+    const beadGeom = new THREE.SphereGeometry(0.09, 20, 14)
     const beads = [0.12, 0.34, 0.56, 0.78].map((u) => {
       const m = new THREE.Mesh(beadGeom, new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: accent, emissiveIntensity: 0.25 }))
       m.position.copy(usualCurve.getPoint(u))
       root.add(m)
       return m
     })
-    const decision = new THREE.Mesh(new THREE.SphereGeometry(0.24, 32, 20), new THREE.MeshStandardMaterial({ color: amber, emissive: amber, emissiveIntensity: 0.35 }))
+    const decision = new THREE.Mesh(new THREE.SphereGeometry(0.15, 28, 18), new THREE.MeshStandardMaterial({ color: amber, emissive: amber, emissiveIntensity: 0.35 }))
     decision.position.copy(dipCurve.getPoint(1))
     root.add(decision)
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.025, 12, 64), new THREE.MeshBasicMaterial({ color: amber, transparent: true, opacity: 0.6 }))
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.012, 8, 64), new THREE.MeshBasicMaterial({ color: amber, transparent: true, opacity: 0.6 }))
     ring.position.copy(decision.position)
     root.add(ring)
     const ends = [resolveCurve.getPoint(1), persistCurve.getPoint(1)].map((p, i) => {
-      const m = new THREE.Mesh(new THREE.SphereGeometry(0.16, 24, 16), mat(i === 0 ? good : poor, (i === 0 ? taken === 'persist' : taken === 'resolve') ? 0.2 : 1))
+      const m = new THREE.Mesh(new THREE.SphereGeometry(0.11, 20, 14), mat(i === 0 ? good : poor, (i === 0 ? taken === 'persist' : taken === 'resolve') ? 0.2 : 1))
       m.position.copy(p)
       root.add(m)
       return m
@@ -79,10 +79,10 @@ export default function ForkScene({ taken = null, labels = true, decisionLabel =
       dip.set(ease.outCubic((p - 1.2) / 0.6))
       res.set(ease.outCubic((p - 1.9) / 1.1))
       per.set(ease.outCubic((p - 1.9) / 1.1))
-      beads.forEach((b, i) => b.scale.setScalar(ease.outBack((p - 0.2 - i * 0.25) / 0.4)))
-      const d = ease.outBack((p - 1.7) / 0.5)
+      beads.forEach((b, i) => b.scale.setScalar(ease.outCubic((p - 0.2 - i * 0.25) / 0.4)))
+      const d = ease.outCubic((p - 1.7) / 0.5)
       decision.scale.setScalar(d)
-      ends.forEach((e) => e.scale.setScalar(ease.outBack((p - 2.9) / 0.4)))
+      ends.forEach((e) => e.scale.setScalar(ease.outCubic((p - 2.9) / 0.4)))
       const pulse = (t * 0.8) % 1
       ring.scale.setScalar(d * (1 + pulse * 0.9))
       ;(ring.material as THREE.MeshBasicMaterial).opacity = still ? 0.5 : 0.7 * (1 - pulse) * (p > 1.8 ? 1 : 0)

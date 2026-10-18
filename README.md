@@ -30,10 +30,10 @@ replay.**
 
 | | |
 |---|---|
-| ![Usual vs observed](docs/screenshots/chart.png) | ![A decision point](docs/screenshots/decision.png) |
-| **Baseline vs. now.** Last week's usual against what's been seen, per area (illustrative index, 100 = her usual). The timeline separates *observed*, *documented*, *action taken* and *not known*. | **Decision points.** What changed? Is each statement an observation, an assumption, or unknown? What do you do? |
-| ![SBAR handover](docs/screenshots/handover.png) | ![Debrief](docs/screenshots/debrief.png) |
-| **SBAR handover.** Cite facts you've seen; start from a Gemini or template draft (clearly labelled), edit it, keep unknowns separate. | **Debrief.** Every point explained: what changed, what wasn't known, where an assumption was treated as a fact, what other choices would have done. |
+| ![Shift timeline](docs/screenshots/timeline.png) | ![Deviation heatmap](docs/screenshots/heatmap.png) |
+| **Shift timeline.** Swimlanes for each person across day, evening and night. Bars show who knew of the change; arrows are hand-offs, broken where nothing was passed on. Drag the cursor back to see what was known at any moment, or pick a decision to light up the entries it was scored on. | **Pattern against her usual.** A deviation heatmap by area and shift (also as lines, or as a 3D view). Illustrative index, 100 = usual. |
+| ![A decision](docs/screenshots/decision.png) | ![Decision map](docs/screenshots/map.png) |
+| **Decisions.** What changed, then a classification table (observed, assumption, unknown; keys 1 to 3), then the action. Feedback states the points and the reasoning. | **Debrief.** Score composition, decision quality against outcome (the same Monday decision under both endings), and a map of every choice and where it leads. |
 
 ### Scenarios
 
@@ -67,10 +67,10 @@ web/      Next.js app: three.js scenes, the simulation UI, saved mode via the AP
 e2e/      Playwright: the whole game in Chromium, saved and practice mode, desktop and phone, with axe checks
 ```
 
-- **Visual and direct.** A three.js scene of the idea (a usual band, a dip, two futures) and a 3D view of the resident's
-  pattern where each observation drops in as it is drawn. Events are drawn from a deck, statements are dragged into
-  bins, choices flip to reveal points, and the debrief lights up the branch this run took. Everything has a reduced
-  motion path, a no-WebGL fallback (a flat chart) and keyboard access.
+- **Visualizations that answer questions.** The shift timeline shows who knew what and when, including hand-offs
+  that never happened; its cursor replays what was known at any moment. The heatmap shows deviation from the
+  resident's usual at a glance. The debrief plots decision quality against outcome and maps every alternative choice
+  to its consequences. A three.js scene on the home page shows the idea itself: one Monday, two possible Tuesdays.
 
 - **Deterministic engine.** Scenarios are data: baseline, ordered events, decision points, choices with points, branch
   conditions by course, expected reasoning. The engine reveals one event per step, records the event ids revealed at

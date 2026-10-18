@@ -3,13 +3,13 @@ import Link from 'next/link'
 
 export const metadata: Metadata = { title: 'Why it’s built this way' }
 
-const PRINCIPLES: [string, string, string][] = [
-  ['◎', 'Her usual first', 'Change only means something against a baseline.'],
-  ['⑂', 'Two futures', 'The same Monday can resolve or persist.'],
-  ['⏱', 'No hindsight', 'Scored on what you knew at the time.'],
-  ['⚖', 'Fact, guess, gap', 'Sorted, never blurred.'],
-  ['☕', 'Offered ≠ drunk', 'An attempt is not an outcome.'],
-  ['✦', 'AI drafts, people decide', 'Gemini only phrases the handover.'],
+const PRINCIPLES: [string, string][] = [
+  ['Baseline first', 'A change only means something against the resident’s usual.'],
+  ['Two futures', 'The same Monday can resolve or persist.'],
+  ['No hindsight', 'Decisions are scored on what was known at the time.'],
+  ['Fact, assumption, unknown', 'Kept apart in every decision and handover.'],
+  ['Offered is not consumed', 'An attempt is not an outcome.'],
+  ['AI drafts, people decide', 'Gemini only phrases the handover.'],
 ]
 
 const SOURCES: [string, string, string][] = [
@@ -28,12 +28,9 @@ export default function Rationale() {
       </div>
 
       <ul className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-        {PRINCIPLES.map(([i, t, d], n) => (
-          <li key={t} className="card pop p-4" style={{ animationDelay: `${n * 60}ms` }}>
-            <span className="grid size-10 place-items-center rounded-full bg-accent-soft text-[18px] text-accent-strong" aria-hidden="true">
-              {i}
-            </span>
-            <h2 className="mt-2 text-[17px]">{t}</h2>
+        {PRINCIPLES.map(([t, d]) => (
+          <li key={t} className="card border-t-2 border-t-ink p-4">
+            <h2 className="text-[17px]">{t}</h2>
             <p className="mt-0.5 text-[13.5px] text-ink-2">{d}</p>
           </li>
         ))}
@@ -67,7 +64,7 @@ export default function Rationale() {
           <li>• No diagnosis, prediction or treatment advice</li>
         </ul>
         <Link href="/play/?scenario=evelyn" className="btn btn-primary mt-4">
-          Play →
+          Play a scenario
         </Link>
       </section>
     </div>

@@ -26,11 +26,14 @@ export async function noA11yViolations(page: Page, label: string) {
   expect(r.violations.map((v) => `${label}: ${v.id} ${v.nodes.map((n) => n.target.join(' ')).join(' | ')}`)).toEqual([])
 }
 
+const esc = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
 export async function drawUntilStop(page: Page) {
   for (let i = 0; i < 40; i++) {
     if ((await page.locator('#decision-title').count()) || (await page.locator('#handover-title').count())) return
-    const deck = page.getByRole('button', { name: 'Draw next event' })
-    if ((await deck.count()) && (await deck.isEnabled())) await deck.click()
+    const next = page.getByRole('button', { name: /^Next entry/ })
+    // The button disappears when a decision arrives, so never wait on it indefinitely.
+    if ((await next.count()) && (await next.isEnabled({ timeout: 500 }).catch(() => false))) await next.click({ timeout: 2000 }).catch(() => {})
     else await page.waitForTimeout(100)
   }
   throw new Error('No decision or handover appeared')
@@ -38,16 +41,12 @@ export async function drawUntilStop(page: Page) {
 
 export async function decide(page: Page, d: Answers) {
   await expect(page.locator('#decision-title')).toBeVisible()
-  for (const n of d.changed) await page.getByRole('button', { name: n, exact: true }).click()
-  await page.getByRole('button', { name: 'Next →' }).click()
-  for (const [text, bin] of Object.entries(d.sort)) {
-    await page.locator('[data-drop="tray"] button', { hasText: text }).click()
-    await page.getByRole('button', { name: `Put in ${bin}` }).click()
-  }
-  await expect(page.getByText('All sorted ✓')).toBeVisible()
-  await page.getByRole('button', { name: 'Next →' }).click()
+  for (const n of d.changed) await page.getByLabel(n, { exact: true }).check()
+  await page.getByRole('button', { name: 'Continue' }).click()
+  for (const [text, tag] of Object.entries(d.sort)) await page.getByRole('radio', { name: new RegExp(`${esc(text)}.*: ${tag}$`) }).check()
+  await page.getByRole('button', { name: 'Continue' }).click()
   await page.getByLabel(d.choice).check()
-  await page.getByRole('button', { name: 'Lock it in' }).click()
+  await page.getByRole('button', { name: 'Submit decision' }).click()
   await expect(page.locator('#feedback-title')).toBeVisible()
 }
 
