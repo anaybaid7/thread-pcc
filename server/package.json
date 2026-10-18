@@ -1,0 +1,26 @@
+{
+  "name": "@thread/server",
+  "private": true,
+  "version": "2.0.0",
+  "type": "module",
+  "description": "THREAD API: attempts, decisions and handovers persisted in PostgreSQL; Gemini-assisted handover drafts.",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "start": "tsx src/main.ts",
+    "migrate": "tsx src/cli.ts migrate",
+    "seed": "tsx src/cli.ts seed",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "0.5.8",
+    "@thread/engine": "*",
+    "fastify": "5.12.5",
+    "pg": "8.23.1",
+    "tsx": "4.23.15",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@types/pg": "8.23.1"
+  }
+}

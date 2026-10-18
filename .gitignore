@@ -1,24 +1,21 @@
-.venv/
-__pycache__/
-*.pyc
-.pytest_cache/
-.ruff_cache/
-*.egg-info/
-build/
-dist/
+node_modules/
 .DS_Store
+*.tsbuildinfo
+coverage/
 
-# Runtime state
-data/*.sqlite*
-data/llm_cache/*.tmp
+# Local runtime state
+.data/
+*.log
 
 # Web
-web/node_modules/
 web/.next/
 web/out/
 web/next-env.d.ts
-web/public/snapshot/
 web/test-results/
-*.tsbuildinfo
+
+# Secrets: never commit real credentials
 .env
-.env.local
+.env.*
+!.env.example
+*.pem
+*.crt
