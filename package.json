@@ -2,17 +2,27 @@
   "name": "thread",
   "private": true,
   "type": "module",
-  "workspaces": ["engine", "server", "web"],
-  "engines": { "node": ">=22" },
+  "workspaces": [
+    "engine",
+    "server",
+    "web"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev:server": "npm run dev -w server",
     "dev:web": "npm run dev -w web",
     "test": "npm run test -w engine -w server",
     "typecheck": "npm run typecheck -w engine -w server -w web",
     "lint": "npm run lint -w web",
-    "build": "npm run build -w web"
+    "build": "npm run build -w web",
+    "build:e2e": "cd web && NEXT_PUBLIC_DATA_MODE=static PAGES_BASE_PATH=/thread-pcc npx next build && THREAD_API_ORIGIN=http://127.0.0.1:8010 npx next build",
+    "e2e": "playwright test -c e2e"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
+    "@playwright/test": "1.63.0",
     "@types/node": "22.19.1",
     "typescript": "5.9.3",
     "vitest": "5.0.3"

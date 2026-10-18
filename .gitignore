@@ -19,3 +19,7 @@ web/test-results/
 !.env.example
 *.pem
 *.crt
+
+# Browser tests
+test-results/
+playwright-report/

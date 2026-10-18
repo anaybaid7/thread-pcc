@@ -1,7 +1,8 @@
 import type { NextConfig } from 'next'
 
 // Two builds from one codebase:
-//   live   (default)  pages call the THREAD API; /api is proxied to the server (THREAD_API_ORIGIN, default :8000).
+//   live   (default)  pages call the THREAD API; /api is proxied to the server. THREAD_API_ORIGIN (default :8000)
+//                     is read at build time: Next.js bakes rewrite destinations into the build.
 //   static            NEXT_PUBLIC_DATA_MODE=static exports plain files for GitHub Pages. The same scenario engine runs
 //                     in the browser in practice mode: nothing is saved, and AI drafting is off.
 const isStatic = process.env.NEXT_PUBLIC_DATA_MODE === 'static'

@@ -119,25 +119,49 @@ export const server = {
 }
 
 // ── Practice mode: the engine in this tab ───────────────────────────────────
+//
+// The engine is deterministic, so a practice attempt is fully described by its scenario, its course and the commands
+// played. That log is kept in sessionStorage; a refresh replays it and lands exactly where the player was.
 
-const practice = new Map<string, { scenario: Scenario; state: AttemptState; replayOf: string | null; revision: number }>()
-let practiceCount = 0
+type Cmd = { t: 'advance' } | { t: 'decide'; id: string; input: DecisionInput } | { t: 'submit'; draft: HandoverDraft; from: DraftSource | 'blank' }
+type Practice = { id: string; scenario: Scenario; course: string; state: AttemptState; replayOf: string | null; cmds: Cmd[] }
+
+const practice = new Map<string, Practice>()
+const STORE = 'thread:practice'
+
+function save(p: Practice) {
+  try {
+    sessionStorage.setItem(STORE, JSON.stringify({ id: p.id, scenarioId: p.scenario.id, version: p.scenario.version, course: p.course, replayOf: p.replayOf, cmds: p.cmds }))
+  } catch {
+    // Storage can be unavailable (private mode); practice still works, it just won't survive a refresh.
+  }
+}
+
+function apply(sc: Scenario, st: AttemptState, c: Cmd): AttemptState {
+  if (c.t === 'advance') return advance(sc, st).state
+  if (c.t === 'decide') return decide(sc, st, c.id, c.input).state
+  return submitHandover(sc, st, c.draft, c.from).state
+}
 
 function practiceSnap(id: string): Snapshot {
   const p = practice.get(id)!
-  return { mode: 'practice', id, revision: p.revision, replayOf: p.replayOf, view: buildView(p.scenario, p.state) }
+  return { mode: 'practice', id, revision: p.cmds.length, replayOf: p.replayOf, view: buildView(p.scenario, p.state) }
 }
 
 function practiceStart(scenario: Scenario, course?: string, replayOf: string | null = null) {
-  const id = `practice-${++practiceCount}`
-  practice.set(id, { scenario, state: start(scenario, course), replayOf, revision: 0 })
+  const id = `practice-${crypto.randomUUID().slice(0, 8)}`
+  const p: Practice = { id, scenario, course: course ?? scenario.defaultCourse, state: start(scenario, course), replayOf, cmds: [] }
+  practice.set(id, p)
+  save(p)
   return practiceSnap(id)
 }
 
-function step(s: Snapshot, fn: (sc: Scenario, st: AttemptState) => AttemptState): Snapshot {
+function step(s: Snapshot, c: Cmd): Snapshot {
   const p = practice.get(s.id)
   if (!p) throw new ApiError(404, 'This practice attempt is no longer in memory. Start again.')
-  practice.set(s.id, { ...p, state: fn(p.scenario, p.state), revision: p.revision + 1 })
+  const next = { ...p, state: apply(p.scenario, p.state, c), cmds: [...p.cmds, c] }
+  practice.set(s.id, next)
+  save(next)
   return practiceSnap(s.id)
 }
 
@@ -156,8 +180,24 @@ export const local = {
       if (!sc) throw new Error(`No scenario "${scenarioId}"`)
       return practiceStart(sc)
     }),
-  advance: (s: Snapshot) => wrap(() => step(s, (sc, st) => advance(sc, st).state)),
-  decide: (s: Snapshot, decisionId: string, input: DecisionInput) => wrap(() => step(s, (sc, st) => decide(sc, st, decisionId, input).state)),
+  /** The practice attempt from this tab's session, replayed through the engine, if it is for this scenario. */
+  resume: (scenarioId: string): Snapshot | null => {
+    try {
+      const raw = sessionStorage.getItem(STORE)
+      if (!raw) return null
+      const saved = JSON.parse(raw) as { id: string; scenarioId: string; version: number; course: string; replayOf: string | null; cmds: Cmd[] }
+      const sc = getScenario(saved.scenarioId)
+      if (!sc || saved.scenarioId !== scenarioId || sc.version !== saved.version) return null
+      const state = saved.cmds.reduce((st, c) => apply(sc, st, c), start(sc, saved.course))
+      if (state.phase === 'complete') return null
+      practice.set(saved.id, { id: saved.id, scenario: sc, course: saved.course, state, replayOf: saved.replayOf, cmds: saved.cmds })
+      return practiceSnap(saved.id)
+    } catch {
+      return null
+    }
+  },
+  advance: (s: Snapshot) => wrap(() => step(s, { t: 'advance' })),
+  decide: (s: Snapshot, decisionId: string, input: DecisionInput) => wrap(() => step(s, { t: 'decide', id: decisionId, input })),
   draft: (s: Snapshot, factIds: string[]): Promise<DraftResponse> =>
     wrap(() => {
       const p = practice.get(s.id)!
@@ -165,17 +205,16 @@ export const local = {
         draft: templateDraft(p.scenario, p.state, factIds),
         source: 'template' as const,
         model: null,
-        fallbackReason: 'Practice mode runs in your browser, so AI drafting (which needs the THREAD server) is off. This is the standard template.',
+        fallbackReason: 'Practice mode runs in your browser, so AI drafting is off.',
         validation: [],
         saved: false,
       }
     }),
-  submit: (s: Snapshot, draft: HandoverDraft, startedFrom: DraftSource | 'blank') =>
-    wrap(() => step(s, (sc, st) => submitHandover(sc, st, draft, startedFrom).state)),
+  submit: (s: Snapshot, draft: HandoverDraft, startedFrom: DraftSource | 'blank') => wrap(() => step(s, { t: 'submit', draft, from: startedFrom })),
   replay: (s: Snapshot, course: 'same' | 'other') =>
     wrap(() => {
       const p = practice.get(s.id)!
-      const next = course === 'same' ? p.state.course : (p.scenario.courses.find((c) => c.id !== p.state.course)?.id ?? p.state.course)
+      const next = course === 'same' ? p.course : (p.scenario.courses.find((c) => c.id !== p.course)?.id ?? p.course)
       return practiceStart(p.scenario, next, s.id)
     }),
 }

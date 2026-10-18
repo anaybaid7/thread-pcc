@@ -63,8 +63,14 @@ No points for naming a diagnosis, predicting a transfer, or reaching the most dr
 ```
 engine/   pure TypeScript: scenario data, deterministic engine, rubric, debrief, handover facts and validator
 server/   Fastify API: PostgreSQL persistence, migrations and seed, Gemini drafting, health check
-web/      Next.js app: the simulation UI (Recharts), saved mode via the API or practice mode in the browser
+web/      Next.js app: three.js scenes, the simulation UI, saved mode via the API or practice mode in the browser
+e2e/      Playwright: the whole game in Chromium, saved and practice mode, desktop and phone, with axe checks
 ```
+
+- **Visual and direct.** A three.js scene of the idea (a usual band, a dip, two futures) and a 3D view of the resident's
+  pattern where each observation drops in as it is drawn. Events are drawn from a deck, statements are dragged into
+  bins, choices flip to reveal points, and the debrief lights up the branch this run took. Everything has a reduced
+  motion path, a no-WebGL fallback (a flat chart) and keyboard access.
 
 - **Deterministic engine.** Scenarios are data: baseline, ordered events, decision points, choices with points, branch
   conditions by course, expected reasoning. The engine reveals one event per step, records the event ids revealed at
@@ -98,6 +104,7 @@ make setup   # npm install (all workspaces)
 make dev     # API on :8000, app on http://localhost:3000
 make test    # engine and server tests
 make pages   # the static practice-mode build used for GitHub Pages
+make e2e     # build both modes and play the game in Chromium (saved, practice, phone)
 ```
 
 Other targets: `make migrate`, `make seed` (both also run automatically when the API starts), `make reset` (delete the
@@ -119,6 +126,7 @@ talks to `/api`.
 | `GEMINI_TIMEOUT_MS` | `12000` | |
 | `GEMINI_MAX_DRAFTS_PER_ATTEMPT` | `3` | AI drafts per attempt before the template is used |
 | `GEMINI_MAX_REQUESTS_PER_HOUR` | `60` | Per server process |
+| `THREAD_API_ORIGIN` | `http://127.0.0.1:8000` | Where the web app proxies `/api`. Read when the web app is **built** (Next.js bakes rewrites in) |
 
 ### Vultr Managed PostgreSQL
 
@@ -150,7 +158,9 @@ Each draft is stored in `handover_drafts` with the facts supplied to the model a
   - A real PostgreSQL 17 server in CI.
   - Gemini handling against stubbed responses: valid, invented vital sign, unknown presented as known, diagnosis,
     HTTP error, malformed JSON, timeout and budgets.
-  - The full journey in Chrome at desktop and phone widths, with axe WCAG 2.1 AA checks on every screen.
+  - Every path through every scenario (each course, each choice, careful and careless answers) played by the engine.
+  - Playwright in CI: the full game in saved mode against the real API, in practice mode against the static build,
+    on a phone viewport, a refresh mid-game, replay isolation, and axe WCAG 2.1 AA on every screen.
 - **Not yet tested:**
   - A live Vultr cluster: no credentials were available while building. The TLS options follow Vultr's connection
     details but haven't been exercised against a real cluster.

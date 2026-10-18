@@ -2,7 +2,7 @@
 # Needs Node 22+. No database server or API key required: without DATABASE_URL the API uses an embedded
 # PostgreSQL (PGlite) in .data/, and without GEMINI_API_KEY handover drafts use the standard template.
 
-.PHONY: setup dev api web test typecheck lint build pages migrate seed reset
+.PHONY: setup dev api web test typecheck lint build pages migrate seed reset e2e
 
 setup:            ## install dependencies for all workspaces
 	npm install
@@ -39,3 +39,7 @@ seed:             ## migrations plus scenario seed data
 
 reset:            ## delete the embedded development database
 	rm -rf .data
+
+e2e:              ## build both web modes, then play the game in Chromium (saved, practice, phone)
+	npm run build:e2e
+	npm run e2e

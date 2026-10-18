@@ -34,7 +34,10 @@ export function templateDraft(s: Scenario, st: AttemptState, selected?: string[]
   const facts = handoverFacts(s, st)
   const use = (f: Fact) => !selected || selected.includes(f.id)
   const baseline = facts.filter((f) => f.kind === 'baseline' && use(f))
-  const observed = facts.filter((f) => isObserved(f) && use(f))
+  // Observations and charting: what was seen and recorded. Actions are context the nurse already knows.
+  let observed = facts.filter((f) => (f.kind === 'observation' || f.kind === 'documentation') && use(f))
+  const line = (f: Fact) => `${f.when}: ${f.text}.`
+  while (observed.length > 2 && observed.map(line).join('\n').length > SECTION_LIMIT) observed = observed.slice(1)
   const unknown = facts.filter((f) => f.kind === 'unknown' && use(f))
   const revealed = new Set(st.revealed)
   return {
@@ -44,7 +47,7 @@ export function templateDraft(s: Scenario, st: AttemptState, selected?: string[]
       factIds: baseline.map((f) => f.id),
     },
     assessment: {
-      text: observed.map((f) => `${f.when}: ${f.text}.`).join('\n'),
+      text: observed.map(line).join('\n'),
       factIds: observed.map((f) => f.id),
     },
     recommendation: { text: spec.recommendation, factIds: [] },
@@ -52,7 +55,7 @@ export function templateDraft(s: Scenario, st: AttemptState, selected?: string[]
   }
 }
 
-export const SECTION_LIMIT = 1200
+export const SECTION_LIMIT = 2000
 
 /**
  * Structural checks for any draft, plus grounding checks for model output (strict):

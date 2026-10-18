@@ -21,7 +21,7 @@ import {
 } from './repo'
 
 const Tag = z.enum(['observed', 'assumption', 'unknown'])
-const Section = z.object({ text: z.string().max(1200), factIds: z.array(z.string().max(40)).max(50) })
+const Section = z.object({ text: z.string().max(2000), factIds: z.array(z.string().max(40)).max(50) })
 const Draft = z.object({ situation: Section, background: Section, assessment: Section, recommendation: Section, unknowns: z.array(Section).max(10) })
 
 const Bodies = {
