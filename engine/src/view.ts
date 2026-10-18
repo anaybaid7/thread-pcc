@@ -4,6 +4,9 @@ import { handoverFacts } from './handover'
 import { breakdown } from './scoring'
 import type {
   AttemptState,
+  Flow,
+  Person,
+  SimTime,
   Dimension,
   DimensionDef,
   EventKind,
@@ -25,6 +28,9 @@ export type TimelineItem =
   | {
       type: 'event'
       id: string
+      /** Minutes since the start of day 1. */
+      t: number
+      by: string
       day: string
       clock: string
       kind: EventKind
@@ -35,7 +41,31 @@ export type TimelineItem =
       section: string
       dims: Dimension[]
     }
-  | { type: 'decision'; id: string; day: string; clock: string; title: string; choice: string; earned: number; max: number }
+  | {
+      type: 'decision'
+      id: string
+      t: number
+      day: string
+      clock: string
+      title: string
+      choice: string
+      choiceId: string
+      earned: number
+      max: number
+      /** Event ids the decision was judged on. */
+      evidence: string[]
+    }
+
+export interface Awareness extends Person {
+  /** When this person first knew of the change (minutes), or null. */
+  since: number | null
+  how: string | null
+}
+
+export interface FlowMark extends Flow {
+  t: number
+  eventId: string
+}
 
 export interface ChartPoint {
   key: string
@@ -95,11 +125,43 @@ export interface AttemptView {
   now: { day: string; clock: string; label: string } | null
   canAdvance: boolean
   timeline: TimelineItem[]
+  /** Time axis for the shift views: fixed per scenario, in minutes since day 1 00:00. */
+  window: { start: number; end: number; now: number | null; days: string[] }
+  people: Awareness[]
+  flows: FlowMark[]
   chart: ChartPoint[]
   decision: PublicDecision | null
   feedback: DecisionFeedback | null
   handover: { to: string; purpose: string; facts: Fact[] } | null
   debrief: Debrief | null
+}
+
+export function minutes(t: SimTime) {
+  return (t.day - 1) * 1440 + Number(t.clock.slice(0, 2)) * 60 + Number(t.clock.slice(3, 5))
+}
+
+/** Who knew about the change, and every hand-off so far, from revealed events only. */
+export function awareness(s: Scenario, st: AttemptState): { people: Awareness[]; flows: FlowMark[] } {
+  const idx = eventIndex(s)
+  const since = new Map<string, { t: number; how: string }>()
+  const flows: FlowMark[] = []
+  const learn = (who: string, t: number, how: string) => {
+    if (!since.has(who)) since.set(who, { t, how })
+  }
+  for (const id of st.revealed) {
+    const { e } = idx.get(id)!
+    const t = minutes(e)
+    for (const who of e.aware ?? []) learn(who, t, 'saw it')
+    for (const f of e.flows ?? []) {
+      flows.push({ ...f, t, eventId: id })
+      // A hand-off only carries knowledge the sender has.
+      if (f.passed && (since.has(f.from) || f.from === 'record')) learn(f.to, t, f.note)
+    }
+  }
+  return {
+    people: s.people.map((p) => ({ ...p, since: since.get(p.id)?.t ?? null, how: since.get(p.id)?.how ?? null })),
+    flows,
+  }
 }
 
 function shiftOf(day: number, clock: string): { day: number; shift: 'day' | 'evening' | 'night' } {
@@ -155,6 +217,8 @@ function timeline(s: Scenario, st: AttemptState): TimelineItem[] {
     items.push({
       type: 'event',
       id,
+      t: minutes(e),
+      by: e.by,
       day: dayName(s, e.day),
       clock: e.clock,
       kind: e.kind,
@@ -171,10 +235,13 @@ function timeline(s: Scenario, st: AttemptState): TimelineItem[] {
       items.push({
         type: 'decision',
         id: d.decisionId,
+        t: minutes(d.at),
+        evidence: d.evidence,
         day: dayName(s, d.at.day),
         clock: d.at.clock,
         title: dp.title,
         choice: choice.label,
+        choiceId: choice.id,
         earned: d.lines.reduce((n, l) => n + l.earned, 0),
         max: d.lines.reduce((n, l) => n + l.max, 0),
       })
@@ -268,7 +335,11 @@ export function buildView(s: Scenario, st: AttemptState): AttemptView {
   const dp = pendingDecision(s, st)
   const t = dp ? dp.at : last
   const n = node(s, st.nodeId)
+  const aw = awareness(s, st)
   return {
+    window: { start: minutes(s.window.start), end: minutes(s.window.end), now: t ? minutes(t) : null, days: s.days },
+    people: aw.people,
+    flows: aw.flows,
     scenario: {
       id: s.id,
       version: s.version,

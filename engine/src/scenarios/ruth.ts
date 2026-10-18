@@ -1,4 +1,4 @@
-import type { HandoverSpec, Scenario, ScenarioNode } from '../types'
+import type { Flow, HandoverSpec, Scenario, ScenarioNode } from '../types'
 
 /**
  * Not Quite Herself. Ruth Okafor, Cedar wing. Entirely synthetic.
@@ -21,23 +21,31 @@ const handover: HandoverSpec = {
     'Situation: a new change in orientation since breakfast. Background: she usually knows the day and greets staff by name. Assessment: the timed observations, including the 10:00 note that she was herself. Recommendation: ask for an assessment now. Unknowns: when exactly it started, fluids since lunch, pain, sleep.',
 }
 
-const consequence = (id: string, clock: string, text: string, fact: string): ScenarioNode => ({
+const consequence = (id: string, clock: string, text: string, fact: string, flows: Flow[]): ScenarioNode => ({
   id,
   label: 'Wednesday · afternoon',
   stage: 'C',
   handover,
-  events: [{ id: `${id}_e`, day: 1, clock, kind: 'action', source: YOU, text, fact }],
+  events: [{ id: `${id}_e`, day: 1, clock, kind: 'action', source: YOU, by: 'you', flows, text, fact }],
 })
 
 export const ruth: Scenario = {
   id: 'ruth',
-  version: 1,
+  version: 2,
   title: 'Not Quite Herself',
   subtitle: 'Ruth Okafor, Cedar wing',
   blurb:
     'Ruth always knows the day: she crosses it off her calendar. This afternoon she asks if it’s Sunday. Recognise a new change in her thinking and get it to the nurse, without guessing why.',
   role: 'You are Sam, the day-shift personal support worker (PSW) on Cedar wing.',
   days: ['Wednesday'],
+  window: { start: { day: 1, clock: '07:00' }, end: { day: 1, clock: '15:30' } },
+  people: [
+    { id: 'you', label: 'Sam (you)', role: 'Day PSW' },
+    { id: 'luis', label: 'Luis', role: 'Activity aide' },
+    { id: 'daniel', label: 'Daniel', role: 'Charge nurse' },
+    { id: 'evening', label: 'Evening PSW', role: 'Next shift' },
+    { id: 'record', label: 'Chart', role: 'Written record' },
+  ],
   resident: {
     id: 'ruth-okafor',
     name: 'Ruth Okafor',
@@ -86,6 +94,8 @@ export const ruth: Scenario = {
               clock: '13:30',
               kind: 'observation',
               source: YOU,
+              by: 'you',
+              aware: ['you'],
               text: 'Ruth asks you what day it is. She usually tells you, and her calendar isn’t crossed off for today.',
               quote: 'Is it Sunday? I’m waiting for church.',
               fact: 'Asked what day it was; thought it was Sunday (usually knows the day)',
@@ -97,6 +107,7 @@ export const ruth: Scenario = {
               clock: '13:40',
               kind: 'observation',
               source: YOU,
+              by: 'you',
               text: 'She ate about half her lunch, slowly, and needed reminding to keep eating.',
               fact: 'Lunch: ate about half; needed reminding to keep eating',
               measures: { intake: 60 },
@@ -107,6 +118,9 @@ export const ruth: Scenario = {
               clock: '14:05',
               kind: 'observation',
               source: 'Luis, activity aide',
+              by: 'luis',
+              aware: ['luis'],
+              flows: [{ from: 'luis', to: 'you', passed: true, note: 'Told you about word search' }],
               text: 'At word search, Ruth called Luis “Michael”, her son’s name, and left after five minutes. She usually stays the whole hour.',
               fact: 'Called the activity aide by her son’s name; left word search after five minutes (usually stays the hour)',
               measures: { orientation: 35, engagement: 35 },
@@ -117,6 +131,7 @@ export const ruth: Scenario = {
               clock: '14:15',
               kind: 'documentation',
               source: 'Day RPN note, 10:00',
+              by: 'record',
               text: 'The 10:00 note reads: “Pleasant and chatty at breakfast. Ate well.”',
               fact: 'Day RPN note 10:00: pleasant and chatty at breakfast, ate well',
             },
@@ -126,6 +141,7 @@ export const ruth: Scenario = {
               clock: '14:30',
               kind: 'observation',
               source: YOU,
+              by: 'you',
               text: 'Back in her room she is picking at her blanket and says the lights are too bright.',
               fact: 'In her room at 14:30: picking at her blanket; said the lights were too bright',
               measures: { orientation: 30 },
@@ -136,6 +152,7 @@ export const ruth: Scenario = {
               clock: '14:35',
               kind: 'unknown',
               source: 'Chart check',
+              by: 'record',
               text: 'Not known: exactly when this started between breakfast and 13:30, how much she has drunk since lunch, whether she has pain, and how she slept.',
               fact: 'Not known: when it started after breakfast, fluids since lunch, pain, sleep',
             },
@@ -221,10 +238,10 @@ export const ruth: Scenario = {
               'Notice the change in orientation and engagement relative to her usual, and that it is new since breakfast. Keep observations apart from causes. Tell the charge nurse now, including when she was last herself and what isn’t known.',
           },
         },
-        consequence('wed_told', '14:45', 'You find Daniel and describe what you saw since 13:30, and that she was herself at breakfast. He goes to see Ruth and asks you to write it up.', 'Reported to the charge nurse at 14:45'),
-        consequence('wed_reorient', '15:00', 'You settle Ruth in her chair and remind her it’s Wednesday. At the 15:00 handover you mention she has been “a bit confused”.', 'Reoriented at 14:45; mentioned at the 15:00 handover as “a bit confused”'),
-        consequence('wed_cause', '14:45', 'You tell Daniel Ruth has delirium from an infection. He asks what you actually saw and when she was last herself, then goes to see her.', 'Reported to the charge nurse at 14:45, first as a guessed cause, then as observations'),
-        consequence('wed_leave', '15:00', 'At 15:00 the evening PSW asks how Ruth’s day was. It is time for your handover.', 'Not reported before the 15:00 handover'),
+        consequence('wed_told', '14:45', 'You find Daniel and describe what you saw since 13:30, and that she was herself at breakfast. He goes to see Ruth and asks you to write it up.', 'Reported to the charge nurse at 14:45', [{ from: 'you', to: 'daniel', passed: true, note: 'Told Daniel at 14:45' }]),
+        consequence('wed_reorient', '15:00', 'You settle Ruth in her chair and remind her it’s Wednesday. At the 15:00 handover you mention she has been “a bit confused”.', 'Reoriented at 14:45; mentioned at the 15:00 handover as “a bit confused”', [{ from: 'you', to: 'evening', passed: true, note: 'Mentioned as “a bit confused” at 15:00' }, { from: 'you', to: 'daniel', passed: false, note: 'Charge nurse not told' }]),
+        consequence('wed_cause', '14:45', 'You tell Daniel Ruth has delirium from an infection. He asks what you actually saw and when she was last herself, then goes to see her.', 'Reported to the charge nurse at 14:45, first as a guessed cause, then as observations', [{ from: 'you', to: 'daniel', passed: true, note: 'Told Daniel, as a guessed cause' }]),
+        consequence('wed_leave', '15:00', 'At 15:00 the evening PSW asks how Ruth’s day was. It is time for your handover.', 'Not reported before the 15:00 handover', [{ from: 'you', to: 'daniel', passed: false, note: 'Charge nurse not told' }, { from: 'you', to: 'evening', passed: false, note: 'Not mentioned at 15:00' }]),
       ] satisfies ScenarioNode[]
     ).map((n) => [n.id, n]),
   ),

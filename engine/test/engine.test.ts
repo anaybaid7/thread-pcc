@@ -10,6 +10,7 @@ import {
   nodeEvents,
   pendingDecision,
   resolveNext,
+  scenarioMap,
   SCENARIOS,
   scoreLines,
   start,
@@ -240,5 +241,45 @@ describe('view', () => {
     expect(v.debrief!.otherCourses.map((c) => c.id)).toEqual(['persist'])
     expect(v.debrief!.alternatives[0]!.options.find((o) => o.chosen)!.label).toMatch(/off day/)
     expect(v.debrief!.total).toBeLessThan(100)
+  })
+})
+
+describe('who knew, and the scenario map', () => {
+  it('telling the nurse spreads awareness; waiting leaves the next shift in the dark', () => {
+    const told = buildView(evelyn, play(evelyn, 'persist', { d1: 'tell' }))
+    const waited = buildView(evelyn, play(evelyn, 'persist', { d1: 'wait' }))
+    const knows = (v: typeof told, id: string) => v.people.find((p) => p.id === id)!.since
+    expect(knows(told, 'priya')).not.toBeNull()
+    expect(knows(told, 'eve_rpn')).not.toBeNull()
+    // Priya only hears on Tuesday, after the second decision.
+    expect(knows(waited, 'priya')).toBeGreaterThan(1440)
+    expect(knows(told, 'priya')).toBe(11 * 60 + 10)
+    expect(knows(waited, 'eve_rpn')).toBeNull()
+    expect(waited.flows.some((f) => !f.passed && f.to === 'grace')).toBe(true)
+  })
+
+  it('a hand-off only carries what the sender knew', () => {
+    const v = buildView(evelyn, play(evelyn, 'persist', { d1: 'chart' }))
+    // The chart learns from the 11:10 note; Grace learns by seeing supper, then tells the evening RPN.
+    expect(v.people.find((p) => p.id === 'record')!.since).toBe(11 * 60 + 10)
+    expect(v.people.find((p) => p.id === 'eve_rpn')!.since).toBe(19 * 60)
+  })
+
+  it('the time window is fixed per scenario, so it never hints at what comes next', () => {
+    const a = buildView(evelyn, runToStop(evelyn, start(evelyn, 'persist'))).window
+    const b = buildView(evelyn, runToStop(evelyn, start(evelyn, 'resolve'))).window
+    expect({ ...a, now: 0 }).toEqual({ ...b, now: 0 })
+    expect(a.end).toBe(1440 + 15 * 60)
+  })
+
+  it('maps every choice to where it leads, per course', () => {
+    const m = scenarioMap(evelyn, 'persist')
+    const d1 = m.edges.filter((e) => e.from === 'mon_morning')
+    expect(d1.map((e) => e.to).sort()).toEqual(['mon_told_persist', 'mon_told_persist', 'mon_untold_persist', 'mon_untold_persist'])
+    expect(m.nodes.find((n) => n.id === 'tue_persist')!.depth).toBe(2)
+    expect(m.nodes.every((n) => n.facts.length > 0)).toBe(true)
+    const r = scenarioMap(evelyn, 'resolve')
+    expect(r.nodes.some((n) => n.id === 'tue_resolve')).toBe(true)
+    expect(r.nodes.some((n) => n.id === 'tue_persist')).toBe(false)
   })
 })

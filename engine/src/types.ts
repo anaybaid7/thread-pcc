@@ -17,6 +17,21 @@ export interface SimTime {
   clock: string
 }
 
+/** Someone (or the chart) who can know about the change. Rows of the timeline and of "who knew". */
+export interface Person {
+  id: string
+  label: string
+  role: string
+}
+
+/** A hand-off of information about the change. `passed: false` is a hand-off that should have carried it and didn't. */
+export interface Flow {
+  from: string
+  to: string
+  passed: boolean
+  note: string
+}
+
 export interface ScenarioEvent {
   id: string
   day: number
@@ -24,6 +39,12 @@ export interface ScenarioEvent {
   kind: EventKind
   /** Who saw, wrote or did it. */
   source: string
+  /** The person (row) this event belongs to. */
+  by: string
+  /** People who learn of the change by seeing it themselves. */
+  aware?: string[]
+  /** Hand-offs of information this event represents. */
+  flows?: Flow[]
   /** What the timeline shows. */
   text: string
   /** The resident's own words, if any. */
@@ -141,6 +162,9 @@ export interface Scenario {
   blurb: string
   role: string
   days: string[]
+  /** The stretch of time the scenario covers, for time axes. Fixed, so the axis never hints at what comes next. */
+  window: { start: SimTime; end: SimTime }
+  people: Person[]
   resident: Resident
   dimensions: DimensionDef[]
   /** The usual week before the simulation, for the chart. Illustrative. */

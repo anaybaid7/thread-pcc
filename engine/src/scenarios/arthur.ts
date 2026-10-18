@@ -1,4 +1,4 @@
-import type { HandoverSpec, Scenario, ScenarioNode } from '../types'
+import type { Flow, HandoverSpec, Scenario, ScenarioNode } from '../types'
 
 /**
  * Offered Isn't Consumed. Arthur Bell, Birch wing. Entirely synthetic.
@@ -21,23 +21,30 @@ const handover: HandoverSpec = {
     'Situation: little seen drunk today, half his lunch, and charting that records offers without amounts. Background: his usual intake. Assessment: the full cold cup, the sips at lunch, the two days of “fluids offered”. Recommendation: ask for review and record amounts. Unknowns: how much he drank on the last two days.',
 }
 
-const consequence = (id: string, clock: string, text: string, fact: string): ScenarioNode => ({
+const consequence = (id: string, clock: string, text: string, fact: string, flows: Flow[]): ScenarioNode => ({
   id,
   label: 'Thursday · day shift',
   stage: 'C',
   handover,
-  events: [{ id: `${id}_e`, day: 1, clock, kind: 'action', source: YOU, text, fact }],
+  events: [{ id: `${id}_e`, day: 1, clock, kind: 'action', source: YOU, by: 'you', flows, text, fact }],
 })
 
 export const arthur: Scenario = {
   id: 'arthur',
-  version: 1,
+  version: 2,
   title: 'Offered Isn’t Consumed',
   subtitle: 'Arthur Bell, Birch wing',
   blurb:
     'Arthur’s chart says “fluids offered” at every round for two days. His 10:00 tea is still full and cold. Tell an attempt apart from an outcome, and say what nobody knows.',
   role: 'You are Sam, the day-shift personal support worker (PSW) on Birch wing.',
   days: ['Thursday'],
+  window: { start: { day: 1, clock: '07:00' }, end: { day: 1, clock: '15:00' } },
+  people: [
+    { id: 'you', label: 'Sam (you)', role: 'Day PSW' },
+    { id: 'float', label: 'Float PSW', role: 'Covered 10:00' },
+    { id: 'priya', label: 'Priya', role: 'Charge nurse' },
+    { id: 'record', label: 'Chart', role: 'Written record' },
+  ],
   resident: {
     id: 'arthur-bell',
     name: 'Arthur Bell',
@@ -86,6 +93,7 @@ export const arthur: Scenario = {
               clock: '08:15',
               kind: 'observation',
               source: YOU,
+              by: 'you',
               text: 'Breakfast in the dining room. Arthur eats most of it but leaves his juice untouched.',
               fact: 'Breakfast: ate most; left his juice untouched (usually finishes it)',
               measures: { intake: 90, fluids: 40 },
@@ -96,6 +104,8 @@ export const arthur: Scenario = {
               clock: '10:05',
               kind: 'documentation',
               source: 'Float PSW note',
+              by: 'float',
+              flows: [{ from: 'float', to: 'record', passed: true, note: 'Charted “fluids offered”, no amount' }],
               text: 'A float PSW charts at 10:00: “Fluids offered.”',
               fact: 'Charted at 10:00 by a float PSW: “Fluids offered” (no amount)',
             },
@@ -105,6 +115,8 @@ export const arthur: Scenario = {
               clock: '11:30',
               kind: 'observation',
               source: YOU,
+              by: 'you',
+              aware: ['you'],
               text: 'The cup of tea from 10:00 is still full and cold on his table.',
               fact: 'At 11:30 the 10:00 tea was still full and cold',
               measures: { fluids: 25 },
@@ -115,6 +127,7 @@ export const arthur: Scenario = {
               clock: '11:35',
               kind: 'documentation',
               source: 'Flowsheet',
+              by: 'record',
               text: 'The flowsheet shows “Fluids offered” at 10:00 and 15:00 on Tuesday and Wednesday too. No amounts are recorded on any of them.',
               fact: 'Flowsheet Tuesday and Wednesday: “Fluids offered” at 10:00 and 15:00, no amounts recorded',
             },
@@ -124,6 +137,7 @@ export const arthur: Scenario = {
               clock: '12:30',
               kind: 'observation',
               source: YOU,
+              by: 'you',
               text: 'At lunch he eats about half and takes a few sips of water.',
               quote: 'Not thirsty, love.',
               fact: 'Lunch: ate about half; a few sips of water; said he wasn’t thirsty',
@@ -135,6 +149,7 @@ export const arthur: Scenario = {
               clock: '12:45',
               kind: 'observation',
               source: YOU,
+              by: 'you',
               text: 'He is quiet at the table and doesn’t joke with Frank. His lips look dry.',
               fact: 'Quiet at lunch, not joking with Frank; lips looked dry',
               measures: { engagement: 50 },
@@ -145,6 +160,7 @@ export const arthur: Scenario = {
               clock: '12:50',
               kind: 'unknown',
               source: 'Chart check',
+              by: 'record',
               text: 'Not known: how much he actually drank on Tuesday and Wednesday, or at any point today apart from the sips you saw.',
               fact: 'Not known: amounts drunk on Tuesday, Wednesday or today beyond the sips seen',
             },
@@ -223,10 +239,10 @@ export const arthur: Scenario = {
               'Notice that drinks, meals and engagement are all below his usual. Keep “offered” apart from “drank”: the record shows attempts, not outcomes. Tell the nurse now, including the two days of offers without amounts and what isn’t known.',
           },
         },
-        consequence('thu_report', '13:00', 'You tell Priya what you saw today and that the last two days show offers with no amounts. She comes to see Arthur and asks you to write it up.', 'Reported to the charge nurse at 13:00'),
-        consequence('thu_record', '14:50', 'You record each drink: by 14:30, about half a cup of ginger ale. You plan to tell Priya at 15:00.', 'Recorded amounts from 13:00: about half a cup by 14:30'),
-        consequence('thu_offer', '13:15', 'Arthur takes the ginger ale and has a sip. You chart “Fluids offered.”', 'Ginger ale offered at 13:15; a sip seen; charted as “Fluids offered”'),
-        consequence('thu_fine', '14:45', 'At 14:45 Priya asks how Arthur’s day has been. It is time for your handover.', 'Not reported before 14:45'),
+        consequence('thu_report', '13:00', 'You tell Priya what you saw today and that the last two days show offers with no amounts. She comes to see Arthur and asks you to write it up.', 'Reported to the charge nurse at 13:00', [{ from: 'you', to: 'priya', passed: true, note: 'Told Priya at 13:00' }]),
+        consequence('thu_record', '14:50', 'You record each drink: by 14:30, about half a cup of ginger ale. You plan to tell Priya at 15:00.', 'Recorded amounts from 13:00: about half a cup by 14:30', [{ from: 'you', to: 'record', passed: true, note: 'Amounts recorded from 13:00' }, { from: 'you', to: 'priya', passed: false, note: 'Not told until 15:00' }]),
+        consequence('thu_offer', '13:15', 'Arthur takes the ginger ale and has a sip. You chart “Fluids offered.”', 'Ginger ale offered at 13:15; a sip seen; charted as “Fluids offered”', [{ from: 'you', to: 'record', passed: true, note: 'Charted “fluids offered” again' }, { from: 'you', to: 'priya', passed: false, note: 'Charge nurse not told' }]),
+        consequence('thu_fine', '14:45', 'At 14:45 Priya asks how Arthur’s day has been. It is time for your handover.', 'Not reported before 14:45', [{ from: 'you', to: 'priya', passed: false, note: 'Not told; Priya asked at 14:45' }]),
       ] satisfies ScenarioNode[]
     ).map((n) => [n.id, n]),
   ),
