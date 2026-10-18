@@ -1,0 +1,16 @@
+# Optional: a local PostgreSQL server instead of the embedded one.
+#   docker compose up -d
+#   DATABASE_URL=postgresql://thread:thread@localhost:5432/thread make dev
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: thread
+      POSTGRES_PASSWORD: thread
+      POSTGRES_DB: thread
+    ports:
+      - "5432:5432"
+    volumes:
+      - thread-pg:/var/lib/postgresql/data
+volumes:
+  thread-pg:

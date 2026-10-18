@@ -1,59 +1,41 @@
-# THREAD developer entry points. Everything runs locally; no cloud account or API key is needed.
-#
-#   make setup     Python venv + web dependencies
-#   make dev       API on :8000 and the web app on :3000 (Ctrl+C stops both)
-#   make test      Engine and API tests, web typecheck and lint
-#   make eval      Run the labelled evaluation and write data/evaluation.json
+# THREAD · Off Day or Something More?
+# Needs Node 22+. No database server or API key required: without DATABASE_URL the API uses an embedded
+# PostgreSQL (PGlite) in .data/, and without GEMINI_API_KEY handover drafts use the standard template.
 
-SHELL := /bin/bash
-.DEFAULT_GOAL := help
-PY      ?= python3.12
-VENV    := .venv
-BIN     := $(VENV)/bin
+.PHONY: setup dev api web test typecheck lint build pages migrate seed reset
 
-.PHONY: help setup api web dev test test-py test-web lint eval snapshot pages reset clean
+setup:            ## install dependencies for all workspaces
+	npm install
 
-help: ## List targets
-	@grep -hE '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-10s %s\n", $$1, $$2}'
+dev:              ## API on :8000 and the app on http://localhost:3000
+	@trap 'kill 0' INT TERM; npm run dev -w server & npm run dev -w web & wait
 
-setup: ## Create the Python venv and install web dependencies
-	test -d $(VENV) || $(PY) -m venv $(VENV)
-	$(BIN)/pip install -q -e '.[dev]'
-	cd web && npm ci
+api:
+	npm run dev -w server
 
-api: ## Run the API on :8000
-	$(BIN)/uvicorn thread_api.main:app --port 8000 --reload --reload-dir engine --reload-dir api
+web:
+	npm run dev -w web
 
-web: ## Run the web app on :3000 (proxies /api to :8000)
-	cd web && npm run dev
+test:             ## engine and server tests
+	npm test
 
-dev: ## API and web app together
-	@trap 'kill 0' EXIT; $(MAKE) -s api & $(MAKE) -s web & wait
+typecheck:
+	npm run typecheck
 
-test: test-py test-web ## All tests and static checks
+lint:
+	npm run lint
 
-test-py:
-	$(BIN)/pytest
-	$(BIN)/ruff check engine api
+build:            ## production build of the web app (talks to the API)
+	npm run build
 
-test-web:
-	cd web && npm run typecheck && npm run lint
+pages:            ## static practice-mode build, as deployed to GitHub Pages
+	cd web && NEXT_PUBLIC_DATA_MODE=static PAGES_BASE_PATH=/thread-pcc npx next build
 
-lint: ## Static checks only
-	$(BIN)/ruff check engine api
-	cd web && npm run lint
+migrate:          ## apply database migrations (DATABASE_URL or the embedded database)
+	npm run migrate -w server
 
-eval: ## Run the labelled evaluation (writes data/evaluation.json)
-	$(BIN)/thread evaluate --out data/evaluation.json
+seed:             ## migrations plus scenario seed data
+	npm run seed -w server
 
-snapshot: ## Export the engine's output for the static GitHub Pages build
-	$(BIN)/python -m thread_api.snapshot --out web/public/snapshot
-
-pages: snapshot ## Build the static preview into web/out
-	cd web && NEXT_PUBLIC_DATA_MODE=static PAGES_BASE_PATH=/thread-pcc npm run build
-
-reset: ## Reset the demo database to the seeded facility
-	rm -f data/thread.sqlite*
-
-clean:
-	rm -rf web/.next web/out web/public/snapshot .pytest_cache
+reset:            ## delete the embedded development database
+	rm -rf .data

@@ -11,7 +11,7 @@ import type { AttemptState, Criterion, Fact, HandoverDraft, Scenario, ScoreLine 
  */
 
 export const CRITERIA: { key: Criterion; label: string; max: number; about: string }[] = [
-  { key: 'recognition', label: 'Recognising change from her baseline', max: 30, about: 'Did you see what differed from her usual, and how it developed?' },
+  { key: 'recognition', label: 'Recognising change from baseline', max: 30, about: 'Did you see what differed from their usual, and how it developed?' },
   { key: 'communication', label: 'Communication and action', max: 30, about: 'Did the right people hear it, in time, as observations?' },
   { key: 'evidence', label: 'Facts, assumptions and unknowns', max: 25, about: 'Did you keep what was seen apart from guesses and gaps?' },
   { key: 'handover', label: 'Handover clarity', max: 15, about: 'Could the nurse act on your handover?' },
