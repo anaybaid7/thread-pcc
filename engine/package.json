@@ -1,0 +1,14 @@
+{
+  "name": "@thread/engine",
+  "private": true,
+  "version": "2.0.0",
+  "type": "module",
+  "description": "Deterministic scenario engine for THREAD: branching, scoring, debrief and handover facts.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  }
+}
