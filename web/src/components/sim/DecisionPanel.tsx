@@ -1,34 +1,65 @@
 'use client'
 
 import type { Criterion, DecisionFeedback, DecisionInput, PublicDecision, ScoreLine, Tag } from '@thread/engine'
-import { useState } from 'react'
-import { toneOf, useCountUp, useTilt } from '../motion'
+import { useState, type KeyboardEvent } from 'react'
+import { toneOf } from '../motion'
 import { DimIcon, HAS_ICON } from './ResidentCard'
-import { SortBoard } from './SortBoard'
 
 export const scoreTone = toneOf
 
-const TREND_ICON: Record<string, { glyph: string; color: string }> = {
-  usual: { glyph: '↗', color: 'var(--color-good)' },
-  same: { glyph: '→', color: 'var(--color-mid)' },
-  more: { glyph: '↘', color: 'var(--color-poor)' },
-}
+export const TAGS: { id: Tag; label: string; hint: string; color: string }[] = [
+  { id: 'observed', label: 'Observed', hint: 'seen, heard or charted', color: 'var(--color-observation)' },
+  { id: 'assumption', label: 'Assumption', hint: 'an explanation or prediction', color: 'var(--color-mid)' },
+  { id: 'unknown', label: 'Unknown', hint: 'not checked or not recorded', color: 'var(--color-unknown)' },
+]
 
-const STEPS = ['What changed?', 'Fact or not?', 'Your move']
+const STEPS = ['What changed', 'Fact, assumption, unknown', 'Action']
 
-function ChoiceCard({ c, on, onPick }: { c: PublicDecision['choices'][number]; on: boolean; onPick: () => void }) {
-  const { ref, onPointerMove, onPointerLeave } = useTilt<HTMLLabelElement>(5)
+/** Rows are statements, columns are the three categories. Keys 1, 2, 3 set the focused row. */
+function ClassificationTable({ statements, tags, onTag }: { statements: { id: string; text: string }[]; tags: Record<string, Tag>; onTag: (id: string, t: Tag) => void }) {
+  const onKey = (id: string) => (e: KeyboardEvent) => {
+    const i = ['1', '2', '3'].indexOf(e.key)
+    if (i >= 0) {
+      e.preventDefault()
+      onTag(id, TAGS[i]!.id)
+    }
+  }
   return (
-    <label
-      ref={ref}
-      onPointerMove={onPointerMove}
-      onPointerLeave={onPointerLeave}
-      className={`tilt grid cursor-pointer grid-cols-[auto_1fr] gap-x-3 rounded-xl border-2 p-3.5 ${on ? 'border-accent bg-accent-soft' : 'border-line bg-surface hover:border-line-strong'}`}
-    >
-      <input type="radio" name="choice" value={c.id} checked={on} onChange={onPick} className="row-span-2 mt-1 size-4 accent-[var(--color-accent)]" />
-      <span className="text-[15px] leading-snug font-semibold">{c.label}</span>
-      <span className="mt-0.5 text-[13px] text-ink-2">{c.detail}</span>
-    </label>
+    // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- WCAG: a region that scrolls must be reachable by keyboard
+    <section className="overflow-x-auto rounded-lg border border-line" tabIndex={0} aria-label="Statements, scrolls sideways">
+      <table className="w-full min-w-[440px] border-collapse text-[14px]">
+        <thead>
+          <tr className="bg-sunken/70 text-left text-[11.5px] tracking-wide text-ink-3 uppercase">
+            <th className="px-3 py-2 font-semibold">Statement</th>
+            {TAGS.map((t, i) => (
+              <th key={t.id} className="w-[88px] px-1 py-2 text-center font-semibold" title={t.hint}>
+                <span style={{ color: t.color }}>{t.label}</span>
+                <span className="ml-1 font-mono text-[10px] text-ink-3 normal-case">{i + 1}</span>
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {statements.map((s) => (
+            <tr key={s.id} className="border-t border-line focus-within:bg-accent-soft/40" onKeyDown={onKey(s.id)}>
+              <td className="px-3 py-2.5 leading-snug">“{s.text}”</td>
+              {TAGS.map((t) => (
+                <td key={t.id} className="px-2 py-2.5 text-center">
+                  <input
+                    type="radio"
+                    name={`tag-${s.id}`}
+                    checked={tags[s.id] === t.id}
+                    onChange={() => onTag(s.id, t.id)}
+                    aria-label={`${s.text}: ${t.label}`}
+                    className="size-4 cursor-pointer accent-[var(--color-ink)]"
+                  />
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
   )
 }
 
@@ -48,27 +79,27 @@ export function DecisionPanel({
   const [tags, setTags] = useState<Record<string, Tag>>({})
   const [choice, setChoice] = useState<string | null>(null)
   const r = decision.recognition
-  const done = [recognition.length > 0, decision.statements.every((s) => tags[s.id]), !!choice]
+  const sorted = decision.statements.filter((s) => tags[s.id]).length
+  const done = [recognition.length > 0, sorted === decision.statements.length, !!choice]
   const toggle = (id: string) => setRecognition((cur) => (r.kind === 'trend' ? [id] : cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]))
 
   return (
-    <section className="card overflow-hidden border-2 border-accent/60" aria-labelledby="decision-title">
-      <div className="bg-gradient-to-r from-accent to-accent-strong px-4 py-3 text-white sm:px-5">
-        <p className="text-[12px] font-semibold tracking-wider uppercase opacity-80">Decision · {decision.clock}</p>
-        <h2 id="decision-title" className="mt-0.5 text-[21px] text-white">
+    <section className="card border-l-4 border-l-ink" aria-labelledby="decision-title">
+      <div className="border-b border-line px-4 pt-4 pb-3 sm:px-5">
+        <p className="eyebrow">Decision · {decision.clock}</p>
+        <h2 id="decision-title" className="mt-1 text-[21px]">
           {decision.title}
         </h2>
-        <ol className="mt-2.5 flex gap-1.5" aria-label="Steps">
+        <ol className="mt-3 grid grid-cols-3 gap-1" aria-label="Steps">
           {STEPS.map((s, i) => (
-            <li key={s} className="flex-1">
+            <li key={s}>
               <button
                 type="button"
                 onClick={() => (i <= step || done.slice(0, i).every(Boolean)) && setStep(i)}
                 aria-current={i === step ? 'step' : undefined}
-                className={`w-full rounded-md px-2 py-1 text-left text-[12px] font-medium transition-colors ${i === step ? 'bg-white text-accent-strong' : done[i] ? 'bg-white/25' : 'bg-white/10 text-white/80'}`}
+                className={`w-full border-t-2 pt-1.5 text-left text-[12px] font-semibold ${i === step ? 'border-ink text-ink' : done[i] ? 'border-accent text-accent-strong' : 'border-line text-ink-3'}`}
               >
-                {done[i] && i !== step ? '✓ ' : `${i + 1}. `}
-                {s}
+                <span className="font-mono">{i + 1}</span> {s}
               </button>
             </li>
           ))}
@@ -82,104 +113,93 @@ export function DecisionPanel({
           if (done.every(Boolean)) onSubmit({ recognition, tags, choice: choice! })
         }}
       >
-        <div key={step} className="slide-in">
+        <div key={step} className="enter">
           {step === 0 && (
-            <fieldset>
+            <fieldset className="min-w-0">
               <legend className="mb-3 text-[15px] font-semibold">{r.prompt}</legend>
-              <div className={`grid gap-2 ${r.kind === 'trend' ? '' : 'grid-cols-2 sm:grid-cols-3'}`}>
+              <div className="grid gap-1.5 sm:grid-cols-2">
                 {r.options.map((o) => {
                   const on = recognition.includes(o.id)
-                  const t = TREND_ICON[o.id]
                   return (
-                    <button
+                    <label
                       key={o.id}
-                      type="button"
-                      aria-pressed={on}
-                      onClick={() => toggle(o.id)}
-                      className={`relative flex items-center gap-2.5 rounded-xl border-2 px-3 py-3 text-left text-[14.5px] font-semibold transition-all ${
-                        on ? 'pop border-accent bg-accent-soft text-accent-strong' : 'border-line hover:-translate-y-0.5 hover:border-line-strong hover:shadow-md'
-                      }`}
+                      className={`flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-2.5 text-[14px] transition-colors ${on ? 'border-ink bg-sunken/60' : 'border-line hover:border-line-strong'}`}
                     >
-                      {r.kind === 'trend' && t ? (
-                        <span className="grid size-8 place-items-center rounded-full bg-sunken text-[18px]" style={{ color: t.color }} aria-hidden="true">
-                          {t.glyph}
-                        </span>
-                      ) : HAS_ICON.has(o.id) ? (
-                        <DimIcon dim={o.id} size={22} />
-                      ) : (
-                        <span className="size-[22px]" aria-hidden="true" />
-                      )}
-                      {o.label}
-                      {on && (
-                        <span className="absolute -top-2 -right-2 grid size-5 place-items-center rounded-full bg-accent text-[11px] text-white" aria-hidden="true">
-                          ✓
-                        </span>
-                      )}
-                    </button>
+                      <input
+                        type={r.kind === 'trend' ? 'radio' : 'checkbox'}
+                        name="recognition"
+                        checked={on}
+                        onChange={() => toggle(o.id)}
+                        className="size-4 accent-[var(--color-ink)]"
+                      />
+                      {HAS_ICON.has(o.id) && <DimIcon dim={o.id} size={18} />}
+                      <span className="font-medium">{o.label}</span>
+                    </label>
                   )
                 })}
               </div>
-              {r.kind === 'dimensions' && <p className="mt-2 text-[12.5px] text-ink-3">Pick all that the evidence shows.</p>}
+              <p className="mt-2 text-[12.5px] text-ink-3">{r.kind === 'dimensions' ? 'Select every area the entries support, and only those.' : 'Select one.'}</p>
             </fieldset>
           )}
 
           {step === 1 && (
-            <fieldset>
-              <legend className="mb-3 text-[15px] font-semibold">Sort each statement</legend>
-              <SortBoard
-                statements={decision.statements}
-                tags={tags}
-                onChange={(id, tag) =>
-                  setTags((cur) => {
-                    const next = { ...cur }
-                    if (tag) next[id] = tag
-                    else delete next[id]
-                    return next
-                  })
-                }
-              />
+            <fieldset className="min-w-0">
+              <legend className="mb-3 flex w-full items-baseline justify-between text-[15px] font-semibold">
+                Classify each statement
+                <span className="font-mono text-[12px] font-medium text-ink-3">
+                  {sorted}/{decision.statements.length}
+                </span>
+              </legend>
+              <ClassificationTable statements={decision.statements} tags={tags} onTag={(id, t) => setTags((cur) => ({ ...cur, [id]: t }))} />
             </fieldset>
           )}
 
           {step === 2 && (
-            <fieldset>
+            <fieldset className="min-w-0">
               <legend className="mb-3 text-[15px] font-semibold">{decision.prompt}</legend>
-              <div className="grid gap-2.5 sm:grid-cols-2">
+              <div className="grid gap-1.5">
                 {decision.choices.map((c) => (
-                  <ChoiceCard key={c.id} c={c} on={choice === c.id} onPick={() => setChoice(c.id)} />
+                  <label
+                    key={c.id}
+                    className={`grid cursor-pointer grid-cols-[auto_1fr] gap-x-3 rounded-lg border px-3 py-2.5 transition-colors ${choice === c.id ? 'border-ink bg-sunken/60' : 'border-line hover:border-line-strong'}`}
+                  >
+                    <input type="radio" name="choice" value={c.id} checked={choice === c.id} onChange={() => setChoice(c.id)} className="row-span-2 mt-1 size-4 accent-[var(--color-ink)]" />
+                    <span className="text-[14.5px] font-semibold">{c.label}</span>
+                    <span className="text-[13px] text-ink-2">{c.detail}</span>
+                  </label>
                 ))}
               </div>
             </fieldset>
           )}
         </div>
 
-        <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-line pt-4">
+        <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-line pt-4">
           {step > 0 && (
             <button type="button" className="btn" onClick={() => setStep(step - 1)}>
-              ← Back
+              Back
             </button>
           )}
           {step < 2 ? (
-            <button type="button" className="btn btn-primary btn-lg" disabled={!done[step]} onClick={() => setStep(step + 1)}>
-              Next →
+            <button type="button" className="btn btn-primary" disabled={!done[step]} onClick={() => setStep(step + 1)}>
+              Continue
             </button>
           ) : (
-            <button className="btn btn-primary btn-lg" disabled={!done.every(Boolean) || busy}>
-              {busy ? 'Saving…' : 'Lock it in'}
+            <button className="btn btn-primary" disabled={!done.every(Boolean) || busy}>
+              {busy ? 'Saving…' : 'Submit decision'}
             </button>
           )}
-          <span className="ml-auto text-[12px] text-ink-3">Judged on the {evidenceCount} events so far</span>
+          <span className="ml-auto text-[12px] text-ink-3">Scored on the {evidenceCount} entries visible now</span>
         </div>
       </form>
     </section>
   )
 }
 
-const CRITERION: Record<Criterion, { label: string; icon: string }> = {
-  recognition: { label: 'Noticed', icon: '◉' },
-  communication: { label: 'Acted', icon: '➜' },
-  evidence: { label: 'Fact vs. guess', icon: '⚖' },
-  handover: { label: 'Handover', icon: '✎' },
+const CRITERION: Record<Criterion, string> = {
+  recognition: 'Recognition',
+  communication: 'Communication',
+  evidence: 'Fact vs. assumption',
+  handover: 'Handover',
 }
 
 export function ScoreLineRow({ item, earned, max, reason }: { item: string; earned: number; max: number; reason: string }) {
@@ -188,7 +208,7 @@ export function ScoreLineRow({ item, earned, max, reason }: { item: string; earn
     <li className="rounded-lg border border-line p-3">
       <div className="flex items-baseline justify-between gap-3">
         <b className="text-[14px]">{item.replace(/^.*? · /, '')}</b>
-        <span className="shrink-0 rounded-full px-2 py-0.5 text-[12.5px] font-bold tabular-nums" style={{ background: `var(--color-${tone}-soft)`, color: `var(--color-${tone})` }}>
+        <span className="shrink-0 font-mono text-[12.5px] font-semibold tabular-nums" style={{ color: `var(--color-${tone})` }}>
           {earned}/{max}
         </span>
       </div>
@@ -197,37 +217,23 @@ export function ScoreLineRow({ item, earned, max, reason }: { item: string; earn
   )
 }
 
-function Bar({ line }: { line: ScoreLine }) {
+/** A bullet bar: earned against maximum, with the reason one click away. */
+export function ScoreBar({ line, label }: { line: Pick<ScoreLine, 'earned' | 'max' | 'reason'>; label: string }) {
   const [open, setOpen] = useState(false)
-  const shown = useCountUp(line.earned, 700)
   const tone = toneOf(line.earned, line.max)
-  const c = CRITERION[line.criterion]
   return (
     <li>
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        aria-label={`${c.label}: ${line.earned} of ${line.max}. Why?`}
-        className="w-full text-left"
-      >
-        <div className="flex items-center gap-2 text-[13.5px]">
-          <span aria-hidden="true" className="w-4 text-center" style={{ color: `var(--color-${tone})` }}>
-            {c.icon}
-          </span>
-          <b className="flex-1">{c.label}</b>
-          <span className="font-bold tabular-nums" style={{ color: `var(--color-${tone})` }}>
-            {shown}/{line.max}
-          </span>
-          <span aria-hidden="true" className={`text-[10px] text-ink-3 transition-transform ${open ? 'rotate-90' : ''}`}>
-            ▸
-          </span>
-        </div>
-        <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-sunken" aria-hidden="true">
-          <div className="h-full rounded-full transition-[width] duration-700" style={{ width: `${(shown / line.max) * 100}%`, background: `var(--color-${tone})` }} />
-        </div>
+      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-label={`${label}: ${line.earned} of ${line.max}. Show reason`} className="grid w-full grid-cols-[140px_1fr_52px] items-center gap-3 text-left">
+        <span className="text-[13px] font-semibold">{label}</span>
+        <span className="relative h-3 rounded-sm bg-sunken" aria-hidden="true">
+          <span className="absolute inset-y-0 left-0 rounded-sm transition-[width] duration-500" style={{ width: `${(line.earned / line.max) * 100}%`, background: `var(--color-${tone})` }} />
+          <span className="absolute inset-y-[-3px] right-0 w-0.5 bg-ink/40" />
+        </span>
+        <span className="text-right font-mono text-[12.5px] font-semibold tabular-nums">
+          {line.earned}/{line.max}
+        </span>
       </button>
-      {open && <p className="pop mt-2 text-[13px] text-ink-2">{line.reason}</p>}
+      {open && <p className="enter mt-2 ml-[152px] text-[13px] text-ink-2">{line.reason}</p>}
     </li>
   )
 }
@@ -235,48 +241,49 @@ function Bar({ line }: { line: ScoreLine }) {
 export function FeedbackCard({ feedback }: { feedback: DecisionFeedback }) {
   const earned = feedback.lines.reduce((n, l) => n + l.earned, 0)
   const max = feedback.lines.reduce((n, l) => n + l.max, 0)
-  const shown = useCountUp(earned)
   const tone = toneOf(earned, max)
-  const verdict = tone === 'good' ? 'Strong call.' : tone === 'mid' ? 'Partly there.' : 'Worth rethinking.'
+  const comm = feedback.lines.find((l) => l.criterion === 'communication')
+  const lead = comm?.reason.replace(/^“.*?”\.\s*/, '').split(/(?<=\.)\s/)[0] ?? ''
   const misses = feedback.answers.filter((a) => a.answer !== a.yours)
   return (
-    <section className="card flip-in overflow-hidden" aria-labelledby="feedback-title" aria-live="polite">
-      <div className="flex items-center gap-4 p-4 sm:p-5" style={{ background: `var(--color-${tone}-soft)` }}>
-        <div className="grid size-[72px] shrink-0 place-items-center rounded-2xl bg-surface shadow-sm">
-          <span className="font-serif text-[30px] leading-none font-bold tabular-nums" style={{ color: `var(--color-${tone})` }}>
-            {shown}
-          </span>
-          <span className="text-[11px] text-ink-3">of {max}</span>
-        </div>
+    <section className="card enter border-l-4" style={{ borderLeftColor: `var(--color-${tone})` }} aria-labelledby="feedback-title" aria-live="polite">
+      <div className="flex items-start justify-between gap-4 border-b border-line px-4 pt-4 pb-3 sm:px-5">
         <div className="min-w-0">
-          <p className="text-[12px] font-semibold tracking-wide text-ink-3 uppercase">{feedback.title.split('.')[0]}</p>
-          <h2 id="feedback-title" className="text-[21px]" style={{ color: `var(--color-${tone})` }}>
-            {verdict}
+          <p className="eyebrow">Feedback · {feedback.title.split('.')[0]}</p>
+          <h2 id="feedback-title" className="mt-1 text-[19px] leading-snug">
+            {feedback.choice}
           </h2>
-          <p className="truncate text-[13.5px] text-ink-2">{feedback.choice}</p>
         </div>
+        <p className="shrink-0 text-right">
+          <span className="font-serif text-[30px] leading-none font-semibold tabular-nums" style={{ color: `var(--color-${tone})` }}>
+            {earned}
+          </span>
+          <span className="font-mono text-[13px] text-ink-3"> / {max}</span>
+        </p>
       </div>
-      <div className="p-4 sm:p-5">
-        <ul className="space-y-3">
+      <div className="space-y-4 p-4 sm:p-5">
+        <p className="text-[14px] text-ink-2">{lead}</p>
+        <ul className="space-y-2.5">
           {feedback.lines.map((l) => (
-            <Bar key={l.item} line={l} />
+            <ScoreBar key={l.item} line={l} label={CRITERION[l.criterion]} />
           ))}
         </ul>
         {misses.length > 0 && (
-          <ul className="mt-4 space-y-1.5">
-            {misses.map((a) => (
-              <li key={a.statement} className="flex gap-2 rounded-lg bg-poor-soft/60 px-3 py-2 text-[13px]">
-                <span aria-hidden="true" className="text-poor">
-                  ✗
-                </span>
-                <span>
-                  “{a.statement}” is <b>{a.answer.toLowerCase()}</b>
-                </span>
-              </li>
-            ))}
-          </ul>
+          <div>
+            <p className="text-[12px] font-semibold tracking-wide text-ink-3 uppercase">Misclassified</p>
+            <ul className="mt-1.5 divide-y divide-line rounded-lg border border-line text-[13px]">
+              {misses.map((a) => (
+                <li key={a.statement} className="grid grid-cols-[1fr_auto] gap-3 px-3 py-2">
+                  <span>“{a.statement}”</span>
+                  <span className="text-right text-ink-3">
+                    <s>{a.yours}</s> <b className="text-ink">{a.answer}</b>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
-        <details className="mt-4 text-[13.5px]">
+        <details className="text-[13.5px]">
           <summary className="cursor-pointer font-medium text-accent">What a strong answer looked like</summary>
           <p className="mt-2 text-ink-2">{feedback.expected}</p>
         </details>
